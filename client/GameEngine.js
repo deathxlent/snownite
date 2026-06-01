@@ -57,10 +57,10 @@ export class GameEngine {
     
     this.localPlayer = new Snowman(this.scene, true);
     this.localPlayer.setPosition(0, 0, 0);
-    this.localPlayer.setRotation(0);
+    this.localPlayer.setRotation(Math.PI);
     
     this.thirdPersonCamera = new ThirdPersonCamera(this.camera, this.localPlayer);
-    this.thirdPersonCamera.setRotation(0, -0.2);
+    this.thirdPersonCamera.setRotation(Math.PI, -0.2);
     
     this.thirdPersonCamera.update(0.016);
     this.camera.position.copy(this.camera.position);
@@ -124,8 +124,8 @@ export class GameEngine {
     this.localPlayer.setRotation(cameraYaw);
     
     const forward = new THREE.Vector2(
-      Math.sin(cameraYaw),
-      Math.cos(cameraYaw)
+      -Math.sin(cameraYaw),
+      -Math.cos(cameraYaw)
     );
     const right = new THREE.Vector2(
       Math.cos(cameraYaw),
