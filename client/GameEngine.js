@@ -60,7 +60,7 @@ export class GameEngine {
     this.localPlayer.setRotation(0);
     
     this.thirdPersonCamera = new ThirdPersonCamera(this.camera, this.localPlayer);
-    this.thirdPersonCamera.setRotation(0, 0);
+    this.thirdPersonCamera.setRotation(0, -0.25);
     
     this.thirdPersonCamera.update(0.016);
     this.camera.position.copy(this.camera.position);

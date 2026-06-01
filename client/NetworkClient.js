@@ -46,9 +46,9 @@ export class NetworkClient {
         }
       };
       
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        reject(error);
+      this.ws.onerror = (event) => {
+        console.error('WebSocket error event:', event);
+        reject(new Error('无法连接服务器，请检查地址是否正确'));
       };
       
       const timeout = setTimeout(() => {

@@ -57,7 +57,7 @@ export class InputSystem {
     document.addEventListener('mousemove', (e) => {
       if (this.isPointerLocked) {
         this.mouse.deltaX += e.movementX * GAME_CONFIG.MOUSE_SENSITIVITY;
-        this.mouse.deltaY += e.movementY * GAME_CONFIG.MOUSE_SENSITIVITY;
+        this.mouse.deltaY -= e.movementY * GAME_CONFIG.MOUSE_SENSITIVITY;
       }
     });
     
@@ -145,11 +145,13 @@ export class InputSystem {
   
   getMovementInput() {
     if (this.isTouchDevice) {
+      const x = this.touch.moveJoystick.x;
+      const y = this.touch.moveJoystick.y;
       return {
-        forward: -this.touch.moveJoystick.y,
-        backward: 0,
-        left: -this.touch.moveJoystick.x,
-        right: 0
+        forward: y < 0 ? -y : 0,
+        backward: y > 0 ? y : 0,
+        left: x < 0 ? -x : 0,
+        right: x > 0 ? x : 0
       };
     }
     
@@ -165,7 +167,7 @@ export class InputSystem {
     if (this.isTouchDevice) {
       return {
         yaw: -this.touch.lookJoystick.x * GAME_CONFIG.TOUCH_SENSITIVITY * 10,
-        pitch: this.touch.lookJoystick.y * GAME_CONFIG.TOUCH_SENSITIVITY * 10
+        pitch: -this.touch.lookJoystick.y * GAME_CONFIG.TOUCH_SENSITIVITY * 10
       };
     }
     
