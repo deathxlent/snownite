@@ -1,0 +1,32 @@
+export const GAME_CONFIG = {
+  WORLD_SIZE: 100,
+  PLAYER_SPEED: 8,
+  PLAYER_RADIUS: 0.5,
+  CAMERA_DISTANCE: 5,
+  CAMERA_HEIGHT: 2.5,
+  CAMERA_OFFSET_RIGHT: 1.5,
+  MOUSE_SENSITIVITY: 0.002,
+  TOUCH_SENSITIVITY: 0.005,
+  JOYSTICK_DEADZONE: 0.1,
+  NETWORK_TICK_RATE: 30,
+  SERVER_PORT: 8765
+};
+
+export const MESSAGE_TYPES = {
+  PLAYER_JOIN: 'player_join',
+  PLAYER_LEAVE: 'player_leave',
+  PLAYER_MOVE: 'player_move',
+  WORLD_STATE: 'world_state',
+  WELCOME: 'welcome'
+};
+
+export const COLORS = {
+  SNOW: 0xffffff,
+  SNOW_HOUSE: 0xf0f0ff,
+  TREE_TRUNK: 0x8B4513,
+  TREE_LEAVES: 0x228B22,
+  GROUND: 0xe8e8f0,
+  SKY: 0x87CEEB,
+  CARROT: 0xff6600,
+  COAL: 0x1a1a1a
+};

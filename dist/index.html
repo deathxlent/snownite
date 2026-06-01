@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>雪夜打雪仗 - Snow Nite</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Microsoft YaHei', sans-serif;
+      background: #1a1a2e;
+    }
+    
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    
+    #game-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    
+    #main-menu {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      z-index: 100;
+    }
+    
+    #main-menu h1 {
+      font-size: 4rem;
+      color: white;
+      text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+      margin-bottom: 1rem;
+    }
+    
+    #main-menu .subtitle {
+      font-size: 1.2rem;
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 3rem;
+    }
+    
+    .menu-btn {
+      width: 280px;
+      padding: 1rem 2rem;
+      margin: 0.5rem;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: bold;
+    }
+    
+    .menu-btn.primary {
+      background: linear-gradient(45deg, #00c6fb 0%, #005bea 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(0, 91, 234, 0.4);
+    }
+    
+    .menu-btn.secondary {
+      background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+    }
+    
+    .menu-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    
+    .menu-btn:active {
+      transform: translateY(0);
+    }
+    
+    #connect-menu {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      z-index: 100;
+    }
+    
+    #connect-menu input {
+      width: 280px;
+      padding: 1rem;
+      margin: 0.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 10px;
+      outline: none;
+    }
+    
+    #game-ui {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: none;
+      z-index: 50;
+    }
+    
+    #game-ui.active {
+      display: block;
+    }
+    
+    #back-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 0.8rem 1.5rem;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      pointer-events: auto;
+      font-size: 1rem;
+    }
+    
+    #back-btn:hover {
+      background: rgba(0,0,0,0.7);
+    }
+    
+    #player-count {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 0.8rem 1.5rem;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      border-radius: 25px;
+      font-size: 1rem;
+    }
+    
+    #controls-hint {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.8rem 1.5rem;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      border-radius: 25px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    
+    #touch-controls {
+      position: absolute;
+      bottom: 40px;
+      left: 0;
+      width: 100%;
+      display: none;
+      justify-content: space-between;
+      padding: 0 40px;
+      pointer-events: auto;
+      z-index: 60;
+    }
+    
+    #touch-controls.active {
+      display: flex;
+    }
+    
+    .joystick {
+      width: 120px;
+      height: 120px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      position: relative;
+      border: 3px solid rgba(255,255,255,0.4);
+    }
+    
+    .joystick-knob {
+      width: 50px;
+      height: 50px;
+      background: rgba(255,255,255,0.6);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+    
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 1.5rem;
+      display: none;
+    }
+    
+    #loading.active {
+      display: block;
+    }
+  </style>
+  <script type="module" crossorigin src="/assets/index-BudoHa7D.js"></script>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+    
+    <div id="loading">加载中...</div>
+    
+    <div id="main-menu">
+      <h1>⛄ 雪夜打雪仗</h1>
+      <p class="subtitle">越肩视角 · 可单机可联机</p>
+      <button class="menu-btn primary" onclick="startSinglePlayer()">🎮 单机游戏</button>
+      <button class="menu-btn secondary" onclick="showConnectMenu()">🌐 联机游戏</button>
+    </div>
+    
+    <div id="connect-menu">
+      <h1>🌐 联机游戏</h1>
+      <p class="subtitle">输入服务器地址连接</p>
+      <input type="text" id="server-address" placeholder="服务器地址 (例如: ws://localhost:8080)" value="ws://localhost:8080">
+      <input type="text" id="player-name" placeholder="你的名字" value="雪人玩家">
+      <button class="menu-btn primary" onclick="connectToServer()">连接服务器</button>
+      <button class="menu-btn secondary" onclick="backToMainMenu()">返回</button>
+    </div>
+    
+    <div id="game-ui">
+      <button id="back-btn" onclick="exitGame()">← 返回菜单</button>
+      <div id="player-count">玩家: 1</div>
+      <div id="controls-hint">
+        WASD / 方向键 移动 · 鼠标拖拽 视角
+      </div>
+    </div>
+    
+    <div id="touch-controls">
+      <div class="joystick" id="move-joystick">
+        <div class="joystick-knob" id="move-knob"></div>
+      </div>
+      <div class="joystick" id="look-joystick">
+        <div class="joystick-knob" id="look-knob"></div>
+      </div>
+    </div>
+  </div>
+  
+</body>
+</html>
