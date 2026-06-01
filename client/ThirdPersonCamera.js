@@ -16,24 +16,28 @@ export class ThirdPersonCamera {
     this.height = GAME_CONFIG.CAMERA_HEIGHT;
     this.offsetRight = GAME_CONFIG.CAMERA_OFFSET_RIGHT;
     
-    this.smoothness = 8;
+    this.smoothness = 15;
   }
   
   updateLookInput(deltaYaw, deltaPitch) {
     this.desiredYaw -= deltaYaw;
     this.desiredPitch += deltaPitch;
-    this.desiredPitch = Math.max(-0.8, Math.min(0.5, this.desiredPitch));
+    this.desiredPitch = Math.max(-1.0, Math.min(0.6, this.desiredPitch));
   }
   
   setRotation(yaw, pitch) {
     this.desiredYaw = yaw;
-    this.desiredPitch = pitch;
+    this.desiredPitch = pitch || 0;
     this.yaw = yaw;
-    this.pitch = pitch;
+    this.pitch = pitch || 0;
   }
   
   getYaw() {
     return this.yaw;
+  }
+  
+  getPitch() {
+    return this.pitch;
   }
   
   update(deltaTime) {
@@ -43,29 +47,26 @@ export class ThirdPersonCamera {
     this.pitch = THREE.MathUtils.lerp(this.pitch, this.desiredPitch, t);
     
     const targetPos = this.target.getPosition();
-    const targetYaw = this.target.getRotation();
     
-    const cameraYaw = this.yaw + targetYaw;
+    const forward = new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw));
+    const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     
-    const offsetX = Math.sin(cameraYaw) * this.distance + 
-                    Math.cos(cameraYaw) * this.offsetRight;
-    const offsetZ = Math.cos(cameraYaw) * this.distance - 
-                    Math.sin(cameraYaw) * this.offsetRight;
-    const offsetY = this.height + Math.sin(this.pitch) * 3;
+    const desiredCameraPos = targetPos.clone()
+      .sub(forward.clone().multiplyScalar(this.distance))
+      .add(right.clone().multiplyScalar(this.offsetRight))
+      .add(new THREE.Vector3(0, this.height, 0));
     
-    const desiredCameraPos = new THREE.Vector3(
-      targetPos.x - offsetX,
-      targetPos.y + offsetY,
-      targetPos.z - offsetZ
+    const lookDir = new THREE.Vector3(
+      Math.sin(this.yaw) * Math.cos(this.pitch),
+      Math.sin(this.pitch),
+      Math.cos(this.yaw) * Math.cos(this.pitch)
     );
     
-    const lookAtPos = new THREE.Vector3(
-      targetPos.x + Math.cos(this.pitch) * Math.sin(cameraYaw) * 5,
-      targetPos.y + 2 + Math.sin(this.pitch) * 5,
-      targetPos.z + Math.cos(this.pitch) * Math.cos(cameraYaw) * 5
-    );
+    const lookTarget = targetPos.clone()
+      .add(new THREE.Vector3(0, 1.5, 0))
+      .add(lookDir.clone().multiplyScalar(10));
     
     this.camera.position.lerp(desiredCameraPos, t);
-    this.camera.lookAt(lookAtPos);
+    this.camera.lookAt(lookTarget);
   }
 }

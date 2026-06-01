@@ -1,21 +1,22 @@
 import { GAME_CONFIG } from '../shared/constants.js';
 
 export class InputSystem {
-  constructor() {
+  constructor(canvas) {
+    this.canvas = canvas;
     this.keys = {};
+    this.isPointerLocked = false;
+    
     this.mouse = {
-      isDown: false,
-      lastX: 0,
-      lastY: 0,
       deltaX: 0,
       deltaY: 0
     };
+    
     this.touch = {
-      moveJoystick: { active: false, x: 0, y: 0 },
-      lookJoystick: { active: false, x: 0, y: 0 }
+      moveJoystick: { active: false, x: 0, y: 0, touchId: null },
+      lookJoystick: { active: false, x: 0, y: 0, touchId: null }
     };
     
-    this.isTouchDevice = 'ontouchstart' in window;
+    this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     
     this._initKeyboard();
     this._initMouse();
@@ -35,32 +36,32 @@ export class InputSystem {
   }
   
   _initMouse() {
-    const canvas = document.getElementById('game-canvas');
-    
-    canvas.addEventListener('mousedown', (e) => {
-      if (e.button === 0) {
-        this.mouse.isDown = true;
-        this.mouse.lastX = e.clientX;
-        this.mouse.lastY = e.clientY;
+    this.canvas.addEventListener('click', () => {
+      if (!this.isPointerLocked && !this.isTouchDevice) {
+        this.canvas.requestPointerLock();
       }
     });
     
-    window.addEventListener('mouseup', (e) => {
-      if (e.button === 0) {
-        this.mouse.isDown = false;
+    document.addEventListener('pointerlockchange', () => {
+      this.isPointerLocked = document.pointerLockElement === this.canvas;
+      const hint = document.getElementById('pointer-lock-hint');
+      if (hint) {
+        if (this.isPointerLocked) {
+          hint.classList.remove('active');
+        } else {
+          hint.classList.add('active');
+        }
       }
     });
     
-    canvas.addEventListener('mousemove', (e) => {
-      if (this.mouse.isDown) {
-        this.mouse.deltaX += (e.clientX - this.mouse.lastX) * GAME_CONFIG.MOUSE_SENSITIVITY;
-        this.mouse.deltaY += (e.clientY - this.mouse.lastY) * GAME_CONFIG.MOUSE_SENSITIVITY;
-        this.mouse.lastX = e.clientX;
-        this.mouse.lastY = e.clientY;
+    document.addEventListener('mousemove', (e) => {
+      if (this.isPointerLocked) {
+        this.mouse.deltaX += e.movementX * GAME_CONFIG.MOUSE_SENSITIVITY;
+        this.mouse.deltaY += e.movementY * GAME_CONFIG.MOUSE_SENSITIVITY;
       }
     });
     
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
   
   _initTouch() {
@@ -69,27 +70,31 @@ export class InputSystem {
     const lookJoystick = document.getElementById('look-joystick');
     const lookKnob = document.getElementById('look-knob');
     
+    if (!moveJoystick || !lookJoystick) return;
+    
     const setupJoystick = (element, knob, state) => {
-      let startX = 0, startY = 0;
-      let knobStartX = 0, knobStartY = 0;
+      let startX = 0;
+      let startY = 0;
       
       element.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        const touch = e.touches[0];
+        e.stopPropagation();
+        const touch = e.changedTouches[0];
+        state.touchId = touch.identifier;
         state.active = true;
         startX = touch.clientX;
         startY = touch.clientY;
-        const rect = element.getBoundingClientRect();
-        knobStartX = rect.left + rect.width / 2;
-        knobStartY = rect.top + rect.height / 2;
-      });
+      }, { passive: false });
       
       element.addEventListener('touchmove', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (!state.active) return;
         
-        const touch = e.touches[0];
-        const maxDist = 35;
+        const touch = this._findTouch(e.changedTouches, state.touchId);
+        if (!touch) return;
+        
+        const maxDist = 40;
         
         let dx = touch.clientX - startX;
         let dy = touch.clientY - startY;
@@ -107,19 +112,35 @@ export class InputSystem {
         if (Math.abs(state.y) < GAME_CONFIG.JOYSTICK_DEADZONE) state.y = 0;
         
         knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-      });
+      }, { passive: false });
       
-      element.addEventListener('touchend', (e) => {
+      const endHandler = (e) => {
         e.preventDefault();
+        const touch = this._findTouch(e.changedTouches, state.touchId);
+        if (!touch) return;
+        
         state.active = false;
         state.x = 0;
         state.y = 0;
+        state.touchId = null;
         knob.style.transform = 'translate(-50%, -50%)';
-      });
+      };
+      
+      element.addEventListener('touchend', endHandler, { passive: false });
+      element.addEventListener('touchcancel', endHandler, { passive: false });
     };
     
     setupJoystick(moveJoystick, moveKnob, this.touch.moveJoystick);
     setupJoystick(lookJoystick, lookKnob, this.touch.lookJoystick);
+  }
+  
+  _findTouch(touchList, id) {
+    for (let i = 0; i < touchList.length; i++) {
+      if (touchList[i].identifier === id) {
+        return touchList[i];
+      }
+    }
+    return null;
   }
   
   getMovementInput() {
@@ -159,12 +180,36 @@ export class InputSystem {
     return input;
   }
   
+  requestPointerLock() {
+    if (!this.isTouchDevice && !this.isPointerLocked) {
+      this.canvas.requestPointerLock();
+    }
+  }
+  
+  exitPointerLock() {
+    if (this.isPointerLocked) {
+      document.exitPointerLock();
+    }
+  }
+  
   showTouchControls(show) {
     const touchControls = document.getElementById('touch-controls');
     if (show && this.isTouchDevice) {
       touchControls.classList.add('active');
     } else {
       touchControls.classList.remove('active');
+    }
+  }
+  
+  showPointerLockHint(show) {
+    if (this.isTouchDevice) return;
+    const hint = document.getElementById('pointer-lock-hint');
+    if (hint) {
+      if (show) {
+        hint.classList.add('active');
+      } else {
+        hint.classList.remove('active');
+      }
     }
   }
 }

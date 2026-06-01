@@ -35,7 +35,7 @@ export class GameEngine {
     this.scene = new THREE.Scene();
     
     this.camera = new THREE.PerspectiveCamera(
-      75,
+      70,
       window.innerWidth / window.innerHeight,
       0.1,
       200
@@ -52,18 +52,18 @@ export class GameEngine {
     
     this.clock = new THREE.Clock();
     
-    this.inputSystem = new InputSystem();
+    this.inputSystem = new InputSystem(this.canvas);
     this.mapGenerator = new MapGenerator(this.scene);
     
-    const startX = 0;
-    const startZ = 0;
-    
     this.localPlayer = new Snowman(this.scene, true);
-    this.localPlayer.setPosition(startX, 0, startZ);
+    this.localPlayer.setPosition(0, 0, 0);
     this.localPlayer.setRotation(0);
     
     this.thirdPersonCamera = new ThirdPersonCamera(this.camera, this.localPlayer);
     this.thirdPersonCamera.setRotation(0, 0);
+    
+    this.thirdPersonCamera.update(0.016);
+    this.camera.position.copy(this.camera.position);
     
     window.addEventListener('resize', () => this._onResize());
     
@@ -86,12 +86,15 @@ export class GameEngine {
     this.isRunning = true;
     this.clock.start();
     this.inputSystem.showTouchControls(true);
+    this.inputSystem.showPointerLockHint(true);
     this._gameLoop();
   }
   
   stop() {
     this.isRunning = false;
     this.inputSystem.showTouchControls(false);
+    this.inputSystem.showPointerLockHint(false);
+    this.inputSystem.exitPointerLock();
     
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
@@ -116,33 +119,25 @@ export class GameEngine {
     
     this.thirdPersonCamera.updateLookInput(look.yaw, look.pitch);
     
-    const moveDirection = new THREE.Vector2();
+    const cameraYaw = this.thirdPersonCamera.getYaw();
     
-    const yaw = this.thirdPersonCamera.getYaw() + this.localPlayer.getRotation();
+    this.localPlayer.setRotation(cameraYaw);
     
     const forward = new THREE.Vector2(
-      Math.sin(yaw),
-      Math.cos(yaw)
+      Math.sin(cameraYaw),
+      Math.cos(cameraYaw)
     );
     const right = new THREE.Vector2(
-      Math.cos(yaw),
-      -Math.sin(yaw)
+      Math.cos(cameraYaw),
+      -Math.sin(cameraYaw)
     );
     
+    const moveDirection = new THREE.Vector2();
     moveDirection.add(forward.clone().multiplyScalar(movement.forward - movement.backward));
     moveDirection.add(right.clone().multiplyScalar(movement.right - movement.left));
     
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
-      
-      const targetYaw = Math.atan2(moveDirection.x, moveDirection.y);
-      const currentYaw = this.localPlayer.getRotation();
-      
-      let yawDiff = targetYaw - currentYaw;
-      while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
-      while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
-      
-      this.localPlayer.setRotation(currentYaw + yawDiff * Math.min(1, deltaTime * 10));
       
       const speed = GAME_CONFIG.PLAYER_SPEED * deltaTime;
       const currentPos = this.localPlayer.getPosition();
@@ -160,7 +155,7 @@ export class GameEngine {
       this.localPlayer.setPosition(currentPos.x, 0, currentPos.z);
     }
     
-    this.localPlayer.updateLookRotation(this.thirdPersonCamera.pitch);
+    this.localPlayer.updateLookRotation(this.thirdPersonCamera.getPitch());
     
     this.thirdPersonCamera.update(deltaTime);
     

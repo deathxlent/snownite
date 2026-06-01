@@ -10,31 +10,37 @@ const gameUI = document.getElementById('game-ui');
 const loading = document.getElementById('loading');
 const canvas = document.getElementById('game-canvas');
 
-window.startSinglePlayer = function() {
+function startSinglePlayer() {
   showLoading();
   
   setTimeout(() => {
     hideAllMenus();
     gameUI.classList.add('active');
     
-    gameEngine = new GameEngine(canvas, false, null);
-    gameEngine.start();
+    try {
+      gameEngine = new GameEngine(canvas, false, null);
+      gameEngine.start();
+    } catch (error) {
+      console.error('Game init error:', error);
+      alert('游戏初始化失败: ' + error.message);
+      backToMainMenu();
+    }
     
     hideLoading();
   }, 100);
-};
+}
 
-window.showConnectMenu = function() {
+function showConnectMenu() {
   mainMenu.classList.add('hidden');
   connectMenu.style.display = 'flex';
-};
+}
 
-window.backToMainMenu = function() {
+function backToMainMenu() {
   connectMenu.style.display = 'none';
   mainMenu.classList.remove('hidden');
-};
+}
 
-window.connectToServer = async function() {
+async function connectToServer() {
   const serverAddress = document.getElementById('server-address').value;
   const playerName = document.getElementById('player-name').value;
   
@@ -61,9 +67,9 @@ window.connectToServer = async function() {
   } finally {
     hideLoading();
   }
-};
+}
 
-window.exitGame = function() {
+function exitGame() {
   if (gameEngine) {
     gameEngine.destroy();
     gameEngine = null;
@@ -76,7 +82,7 @@ window.exitGame = function() {
   
   gameUI.classList.remove('active');
   mainMenu.classList.remove('hidden');
-};
+}
 
 function showLoading() {
   loading.classList.add('active');
@@ -91,6 +97,12 @@ function hideAllMenus() {
   connectMenu.style.display = 'none';
   gameUI.classList.remove('active');
 }
+
+document.getElementById('btn-single').addEventListener('click', startSinglePlayer);
+document.getElementById('btn-multi').addEventListener('click', showConnectMenu);
+document.getElementById('btn-connect').addEventListener('click', connectToServer);
+document.getElementById('btn-back').addEventListener('click', backToMainMenu);
+document.getElementById('back-btn').addEventListener('click', exitGame);
 
 window.addEventListener('beforeunload', () => {
   if (gameEngine) {
