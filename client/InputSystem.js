@@ -166,7 +166,7 @@ export class InputSystem {
   getLookInput() {
     if (this.isTouchDevice) {
       return {
-        yaw: -this.touch.lookJoystick.x * GAME_CONFIG.TOUCH_SENSITIVITY * 10,
+        yaw: this.touch.lookJoystick.x * GAME_CONFIG.TOUCH_SENSITIVITY * 10,
         pitch: -this.touch.lookJoystick.y * GAME_CONFIG.TOUCH_SENSITIVITY * 10
       };
     }

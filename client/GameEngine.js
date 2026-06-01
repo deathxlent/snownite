@@ -60,7 +60,7 @@ export class GameEngine {
     this.localPlayer.setRotation(0);
     
     this.thirdPersonCamera = new ThirdPersonCamera(this.camera, this.localPlayer);
-    this.thirdPersonCamera.setRotation(0, -0.25);
+    this.thirdPersonCamera.setRotation(0, -0.2);
     
     this.thirdPersonCamera.update(0.016);
     this.camera.position.copy(this.camera.position);
@@ -134,7 +134,7 @@ export class GameEngine {
     
     const moveDirection = new THREE.Vector2();
     moveDirection.add(forward.clone().multiplyScalar(movement.forward - movement.backward));
-    moveDirection.add(right.clone().multiplyScalar(movement.right - movement.left));
+    moveDirection.add(right.clone().multiplyScalar(movement.left - movement.right));
     
     if (moveDirection.length() > 0) {
       moveDirection.normalize();

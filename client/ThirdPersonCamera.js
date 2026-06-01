@@ -20,7 +20,7 @@ export class ThirdPersonCamera {
   }
   
   updateLookInput(deltaYaw, deltaPitch) {
-    this.desiredYaw -= deltaYaw;
+    this.desiredYaw += deltaYaw;
     this.desiredPitch += deltaPitch;
     this.desiredPitch = Math.max(-1.0, Math.min(0.6, this.desiredPitch));
   }
@@ -64,7 +64,8 @@ export class ThirdPersonCamera {
     
     const lookTarget = targetPos.clone()
       .add(new THREE.Vector3(0, 1.5, 0))
-      .add(lookDir.clone().multiplyScalar(10));
+      .add(lookDir.clone().multiplyScalar(10))
+      .add(right.clone().multiplyScalar(0.8));
     
     this.camera.position.lerp(desiredCameraPos, t);
     this.camera.lookAt(lookTarget);
