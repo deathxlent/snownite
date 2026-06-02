@@ -6,7 +6,6 @@ export class InputSystem {
     this.keys = {};
     this.isPointerLocked = false;
     this.pointerLockAvailable = true;
-    this.isDragging = false;
     
     this.mouse = {
       deltaX: 0,
@@ -54,16 +53,25 @@ export class InputSystem {
     });
   }
   
+  _onPointerLockFailed() {
+    this.pointerLockAvailable = false;
+    const hint = document.getElementById('pointer-lock-hint');
+    if (hint) {
+      hint.textContent = '请在新标签页中打开以启用鼠标控制视角';
+    }
+  }
+
   _requestPointerLock() {
     if (this.isPointerLocked || this.isTouchDevice || !this.pointerLockAvailable) return;
     try {
-      this.canvas.requestPointerLock();
-    } catch (e) {
-      this.pointerLockAvailable = false;
-      const hint = document.getElementById('pointer-lock-hint');
-      if (hint) {
-        hint.textContent = '按住鼠标拖动控制视角';
+      const result = this.canvas.requestPointerLock();
+      if (result && typeof result.catch === 'function') {
+        result.catch(() => {
+          this._onPointerLockFailed();
+        });
       }
+    } catch (e) {
+      this._onPointerLockFailed();
     }
   }
 
@@ -75,7 +83,11 @@ export class InputSystem {
     const hint = document.getElementById('pointer-lock-hint');
     if (hint) {
       hint.addEventListener('click', () => {
-        this._requestPointerLock();
+        if (this.pointerLockAvailable) {
+          this._requestPointerLock();
+        } else {
+          window.open(window.location.href, '_blank');
+        }
       });
     }
 
@@ -87,33 +99,20 @@ export class InputSystem {
           hint.classList.remove('active');
         } else {
           hint.classList.add('active');
-          if (!this.pointerLockAvailable) {
-            hint.textContent = '按住鼠标拖动控制视角';
-          }
         }
       }
+    });
+
+    document.addEventListener('pointerlockerror', () => {
+      this._onPointerLockFailed();
     });
 
     document.addEventListener('mousemove', (e) => {
       if (this.isPointerLocked) {
         this.mouse.deltaX -= e.movementX * GAME_CONFIG.MOUSE_SENSITIVITY;
         this.mouse.deltaY -= e.movementY * GAME_CONFIG.MOUSE_SENSITIVITY * 0.8;
-      } else if (this.isDragging && !this.pointerLockAvailable) {
-        this.mouse.deltaX -= e.movementX * GAME_CONFIG.MOUSE_SENSITIVITY;
-        this.mouse.deltaY -= e.movementY * GAME_CONFIG.MOUSE_SENSITIVITY * 0.8;
       }
     });
-
-    if (!this.isTouchDevice) {
-      document.addEventListener('mousedown', (e) => {
-        if (!this.pointerLockAvailable && !this.isPointerLocked && e.button === 0) {
-          this.isDragging = true;
-        }
-      });
-      document.addEventListener('mouseup', () => {
-        this.isDragging = false;
-      });
-    }
 
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
