@@ -48,7 +48,7 @@ export class ThirdPersonCamera {
     
     const targetPos = this.target.getPosition();
     
-    const forward = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    const forward = new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw));
     const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     
     const desiredCameraPos = targetPos.clone()
@@ -57,15 +57,14 @@ export class ThirdPersonCamera {
       .add(new THREE.Vector3(0, this.height, 0));
     
     const lookDir = new THREE.Vector3(
-      -Math.sin(this.yaw) * Math.cos(this.pitch),
+      Math.sin(this.yaw) * Math.cos(this.pitch),
       Math.sin(this.pitch),
-      -Math.cos(this.yaw) * Math.cos(this.pitch)
+      Math.cos(this.yaw) * Math.cos(this.pitch)
     );
     
     const lookTarget = targetPos.clone()
-      .add(new THREE.Vector3(0, 1.5, 0))
-      .add(lookDir.clone().multiplyScalar(10))
-      .add(right.clone().multiplyScalar(1.5));
+      .add(new THREE.Vector3(0, 1.7, 0))
+      .add(lookDir.clone().multiplyScalar(15));
     
     this.camera.position.lerp(desiredCameraPos, t);
     this.camera.lookAt(lookTarget);
