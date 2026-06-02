@@ -18,8 +18,15 @@ export class InputSystem {
     
     this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     
+    this.gamepad = {
+      moveJoystick: { active: false, x: 0, y: 0 },
+      lookJoystick: { active: false, x: 0, y: 0 }
+    };
+    this.gamepadConnected = false;
+    
     this._initKeyboard();
     this._initMouse();
+    this._initGamepad();
     if (this.isTouchDevice) {
       this._initTouch();
     }
@@ -143,10 +150,75 @@ export class InputSystem {
     return null;
   }
   
+  _initGamepad() {
+    window.addEventListener('gamepadconnected', (e) => {
+      this.gamepadConnected = true;
+      console.log('游戏手柄已连接:', e.gamepad.id);
+    });
+    
+    window.addEventListener('gamepaddisconnected', (e) => {
+      this.gamepadConnected = false;
+      console.log('游戏手柄已断开:', e.gamepad.id);
+    });
+  }
+  
+  _updateGamepadState() {
+    if (!this.gamepadConnected) return;
+    
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let gamepad = null;
+    
+    for (let i = 0; i < gamepads.length; i++) {
+      if (gamepads[i]) {
+        gamepad = gamepads[i];
+        break;
+      }
+    }
+    
+    if (!gamepad) {
+      this.gamepad.moveJoystick.x = 0;
+      this.gamepad.moveJoystick.y = 0;
+      this.gamepad.lookJoystick.x = 0;
+      this.gamepad.lookJoystick.y = 0;
+      return;
+    }
+    
+    let leftX = gamepad.axes[0];
+    let leftY = gamepad.axes[1];
+    let rightX = gamepad.axes[2];
+    let rightY = gamepad.axes[3];
+    
+    if (Math.abs(leftX) < GAME_CONFIG.JOYSTICK_DEADZONE) leftX = 0;
+    if (Math.abs(leftY) < GAME_CONFIG.JOYSTICK_DEADZONE) leftY = 0;
+    if (Math.abs(rightX) < GAME_CONFIG.JOYSTICK_DEADZONE) rightX = 0;
+    if (Math.abs(rightY) < GAME_CONFIG.JOYSTICK_DEADZONE) rightY = 0;
+    
+    this.gamepad.moveJoystick.x = leftX;
+    this.gamepad.moveJoystick.y = leftY;
+    this.gamepad.lookJoystick.x = rightX;
+    this.gamepad.lookJoystick.y = rightY;
+    
+    this.gamepad.moveJoystick.active = leftX !== 0 || leftY !== 0;
+    this.gamepad.lookJoystick.active = rightX !== 0 || rightY !== 0;
+  }
+  
   getMovementInput() {
     if (this.isTouchDevice) {
       const x = this.touch.moveJoystick.x;
       const y = this.touch.moveJoystick.y;
+      return {
+        forward: y < 0 ? -y : 0,
+        backward: y > 0 ? y : 0,
+        left: x < 0 ? -x : 0,
+        right: x > 0 ? x : 0
+      };
+    }
+    
+    this._updateGamepadState();
+    
+    if (this.gamepadConnected && this.gamepad.moveJoystick.active) {
+      const x = this.gamepad.moveJoystick.x;
+      const y = this.gamepad.moveJoystick.y;
       return {
         forward: y < 0 ? -y : 0,
         backward: y > 0 ? y : 0,
@@ -168,6 +240,15 @@ export class InputSystem {
       return {
         yaw: -this.touch.lookJoystick.x * GAME_CONFIG.TOUCH_SENSITIVITY * 10,
         pitch: -this.touch.lookJoystick.y * GAME_CONFIG.TOUCH_SENSITIVITY * 10
+      };
+    }
+    
+    this._updateGamepadState();
+    
+    if (this.gamepadConnected && this.gamepad.lookJoystick.active) {
+      return {
+        yaw: -this.gamepad.lookJoystick.x * GAME_CONFIG.GAMEPAD_SENSITIVITY * GAME_CONFIG.GAMEPAD_LOOK_SPEED * 100,
+        pitch: -this.gamepad.lookJoystick.y * GAME_CONFIG.GAMEPAD_SENSITIVITY * GAME_CONFIG.GAMEPAD_LOOK_SPEED * 100
       };
     }
     
