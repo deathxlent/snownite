@@ -134,7 +134,7 @@ export class GameEngine {
     
     const moveDirection = new THREE.Vector2();
     moveDirection.add(forward.clone().multiplyScalar(movement.forward - movement.backward));
-    moveDirection.add(right.clone().multiplyScalar(movement.right - movement.left));
+    moveDirection.add(right.clone().multiplyScalar(movement.left - movement.right));
     
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
