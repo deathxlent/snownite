@@ -24,6 +24,9 @@ export class GameEngine {
     this.remotePlayers = new Map();
     this.aiPlayers = [];
     
+    this.stamina = 1.0;
+    this.isSprinting = false;
+    
     this.isRunning = false;
     this.animationFrameId = null;
     
@@ -83,6 +86,41 @@ export class GameEngine {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+  
+  _checkPlayerCollision(x, z, excludeSnowman = null) {
+    const radius = GAME_CONFIG.PLAYER_RADIUS * 2;
+    
+    if (this.localPlayer && this.localPlayer !== excludeSnowman) {
+      const pos = this.localPlayer.getPosition();
+      const dx = x - pos.x;
+      const dz = z - pos.z;
+      if (dx * dx + dz * dz < radius * radius) {
+        return true;
+      }
+    }
+    
+    for (const player of this.remotePlayers.values()) {
+      if (player.snowman === excludeSnowman) continue;
+      const pos = player.snowman.getPosition();
+      const dx = x - pos.x;
+      const dz = z - pos.z;
+      if (dx * dx + dz * dz < radius * radius) {
+        return true;
+      }
+    }
+    
+    for (const ai of this.aiPlayers) {
+      if (ai.snowman === excludeSnowman) continue;
+      const pos = ai.snowman.getPosition();
+      const dx = x - pos.x;
+      const dz = z - pos.z;
+      if (dx * dx + dz * dz < radius * radius) {
+        return true;
+      }
+    }
+    
+    return false;
   }
   
   _createAIPlayers() {
@@ -161,14 +199,16 @@ export class GameEngine {
       let newX = currentPos.x + ai.moveDirection.x * moveAmount;
       let newZ = currentPos.z + ai.moveDirection.y * moveAmount;
       
-      if (!this.mapGenerator.checkCollision(newX, currentPos.z, GAME_CONFIG.PLAYER_RADIUS)) {
+      if (!this.mapGenerator.checkCollision(newX, currentPos.z, GAME_CONFIG.PLAYER_RADIUS) &&
+          !this._checkPlayerCollision(newX, currentPos.z, ai.snowman)) {
         currentPos.x = newX;
       } else {
         ai.moveDirection.x *= -1;
         ai.moveTimer = 0;
       }
       
-      if (!this.mapGenerator.checkCollision(currentPos.x, newZ, GAME_CONFIG.PLAYER_RADIUS)) {
+      if (!this.mapGenerator.checkCollision(currentPos.x, newZ, GAME_CONFIG.PLAYER_RADIUS) &&
+          !this._checkPlayerCollision(currentPos.x, newZ, ai.snowman)) {
         currentPos.z = newZ;
       } else {
         ai.moveDirection.y *= -1;
@@ -215,6 +255,7 @@ export class GameEngine {
   _update(deltaTime) {
     const movement = this.inputSystem.getMovementInput();
     const look = this.inputSystem.getLookInput();
+    const wantSprint = this.inputSystem.isSprintPressed();
     
     this.thirdPersonCamera.updateLookInput(look.yaw, look.pitch);
     
@@ -235,19 +276,40 @@ export class GameEngine {
     moveDirection.add(forward.clone().multiplyScalar(movement.forward - movement.backward));
     moveDirection.add(right.clone().multiplyScalar(movement.left - movement.right));
     
-    if (moveDirection.length() > 0) {
+    const isMoving = moveDirection.length() > 0;
+    
+    if (wantSprint && isMoving && this.stamina > 0) {
+      this.isSprinting = true;
+      this.stamina = Math.max(0, this.stamina - deltaTime / 3);
+    } else {
+      this.isSprinting = false;
+      if (!wantSprint || !isMoving) {
+        this.stamina = Math.min(1, this.stamina + deltaTime / 2);
+      }
+    }
+    
+    this._updateStaminaUI();
+    
+    if (isMoving) {
       moveDirection.normalize();
       
-      const speed = GAME_CONFIG.PLAYER_SPEED * deltaTime;
+      let speed = GAME_CONFIG.PLAYER_SPEED;
+      if (this.isSprinting) {
+        speed *= 1.5;
+      }
+      speed *= deltaTime;
+      
       const currentPos = this.localPlayer.getPosition();
       
       let newX = currentPos.x + moveDirection.x * speed;
       let newZ = currentPos.z + moveDirection.y * speed;
       
-      if (!this.mapGenerator.checkCollision(newX, currentPos.z, GAME_CONFIG.PLAYER_RADIUS)) {
+      if (!this.mapGenerator.checkCollision(newX, currentPos.z, GAME_CONFIG.PLAYER_RADIUS) &&
+          !this._checkPlayerCollision(newX, currentPos.z, this.localPlayer)) {
         currentPos.x = newX;
       }
-      if (!this.mapGenerator.checkCollision(currentPos.x, newZ, GAME_CONFIG.PLAYER_RADIUS)) {
+      if (!this.mapGenerator.checkCollision(currentPos.x, newZ, GAME_CONFIG.PLAYER_RADIUS) &&
+          !this._checkPlayerCollision(currentPos.x, newZ, this.localPlayer)) {
         currentPos.z = newZ;
       }
       
@@ -327,6 +389,24 @@ export class GameEngine {
   _updatePlayerCount() {
     const count = 1 + this.remotePlayers.size + this.aiPlayers.length;
     document.getElementById('player-count').textContent = `玩家: ${count}`;
+  }
+  
+  _updateStaminaUI() {
+    const staminaBar = document.getElementById('stamina-bar');
+    const staminaFill = document.getElementById('stamina-fill');
+    
+    if (staminaBar && staminaFill) {
+      staminaBar.style.display = 'block';
+      staminaFill.style.width = `${this.stamina * 100}%`;
+      
+      if (this.isSprinting) {
+        staminaFill.style.backgroundColor = '#4a90d9';
+      } else if (this.stamina < 0.3) {
+        staminaFill.style.backgroundColor = '#d94a4a';
+      } else {
+        staminaFill.style.backgroundColor = '#2ecc71';
+      }
+    }
   }
   
   destroy() {

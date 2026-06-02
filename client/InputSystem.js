@@ -24,6 +24,9 @@ export class InputSystem {
     };
     this.gamepadConnected = false;
     
+    this.sprintPressed = false;
+    this.touchSprintPressed = false;
+    
     this._initKeyboard();
     this._initMouse();
     this._initGamepad();
@@ -35,10 +38,17 @@ export class InputSystem {
   _initKeyboard() {
     window.addEventListener('keydown', (e) => {
       this.keys[e.code] = true;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        this.sprintPressed = true;
+      }
     });
     
     window.addEventListener('keyup', (e) => {
       this.keys[e.code] = false;
+      if (e.code === 'Space') {
+        this.sprintPressed = false;
+      }
     });
   }
   
@@ -64,7 +74,7 @@ export class InputSystem {
     document.addEventListener('mousemove', (e) => {
       if (this.isPointerLocked) {
         this.mouse.deltaX -= e.movementX * GAME_CONFIG.MOUSE_SENSITIVITY;
-        this.mouse.deltaY -= e.movementY * GAME_CONFIG.MOUSE_SENSITIVITY;
+        this.mouse.deltaY -= e.movementY * GAME_CONFIG.MOUSE_SENSITIVITY * 0.8;
       }
     });
     
@@ -139,6 +149,47 @@ export class InputSystem {
     
     setupJoystick(moveJoystick, moveKnob, this.touch.moveJoystick);
     setupJoystick(lookJoystick, lookKnob, this.touch.lookJoystick);
+    
+    const sprintBtn = document.getElementById('sprint-btn');
+    if (sprintBtn) {
+      const updateSprintUI = (pressed) => {
+        if (pressed) {
+          sprintBtn.classList.add('sprinting');
+        } else {
+          sprintBtn.classList.remove('sprinting');
+        }
+      };
+      
+      sprintBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.setTouchSprintPressed(true);
+        updateSprintUI(true);
+      }, { passive: false });
+      
+      const endSprint = (e) => {
+        e.preventDefault();
+        this.setTouchSprintPressed(false);
+        updateSprintUI(false);
+      };
+      
+      sprintBtn.addEventListener('touchend', endSprint, { passive: false });
+      sprintBtn.addEventListener('touchcancel', endSprint, { passive: false });
+      
+      sprintBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.setTouchSprintPressed(true);
+        updateSprintUI(true);
+      });
+      
+      const endSprintMouse = () => {
+        this.setTouchSprintPressed(false);
+        updateSprintUI(false);
+      };
+      
+      sprintBtn.addEventListener('mouseup', endSprintMouse);
+      sprintBtn.addEventListener('mouseleave', endSprintMouse);
+    }
   }
   
   _findTouch(touchList, id) {
@@ -200,6 +251,26 @@ export class InputSystem {
     
     this.gamepad.moveJoystick.active = leftX !== 0 || leftY !== 0;
     this.gamepad.lookJoystick.active = rightX !== 0 || rightY !== 0;
+    
+    this.gamepad.buttonA = gamepad.buttons[0] ? gamepad.buttons[0].pressed : false;
+  }
+  
+  isSprintPressed() {
+    if (this.isTouchDevice) {
+      return this.touchSprintPressed;
+    }
+    
+    this._updateGamepadState();
+    
+    if (this.gamepadConnected && this.gamepad.buttonA) {
+      return true;
+    }
+    
+    return this.sprintPressed;
+  }
+  
+  setTouchSprintPressed(pressed) {
+    this.touchSprintPressed = pressed;
   }
   
   getMovementInput() {
@@ -239,7 +310,7 @@ export class InputSystem {
     if (this.isTouchDevice) {
       return {
         yaw: -this.touch.lookJoystick.x * GAME_CONFIG.TOUCH_SENSITIVITY * 10,
-        pitch: -this.touch.lookJoystick.y * GAME_CONFIG.TOUCH_SENSITIVITY * 10
+        pitch: -this.touch.lookJoystick.y * GAME_CONFIG.TOUCH_SENSITIVITY * 10 * 0.8
       };
     }
     
@@ -247,8 +318,8 @@ export class InputSystem {
     
     if (this.gamepadConnected && this.gamepad.lookJoystick.active) {
       return {
-        yaw: -this.gamepad.lookJoystick.x * GAME_CONFIG.GAMEPAD_SENSITIVITY * GAME_CONFIG.GAMEPAD_LOOK_SPEED * 100,
-        pitch: -this.gamepad.lookJoystick.y * GAME_CONFIG.GAMEPAD_SENSITIVITY * GAME_CONFIG.GAMEPAD_LOOK_SPEED * 100
+        yaw: -this.gamepad.lookJoystick.x * GAME_CONFIG.GAMEPAD_SENSITIVITY * GAME_CONFIG.GAMEPAD_LOOK_SPEED * 100 * 0.5,
+        pitch: -this.gamepad.lookJoystick.y * GAME_CONFIG.GAMEPAD_SENSITIVITY * GAME_CONFIG.GAMEPAD_LOOK_SPEED * 100 * 0.8
       };
     }
     
