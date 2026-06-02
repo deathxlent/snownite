@@ -22,6 +22,7 @@ export class GameEngine {
     this.thirdPersonCamera = null;
     
     this.remotePlayers = new Map();
+    this.aiPlayers = [];
     
     this.isRunning = false;
     this.animationFrameId = null;
@@ -55,7 +56,7 @@ export class GameEngine {
     this.inputSystem = new InputSystem(this.canvas);
     this.mapGenerator = new MapGenerator(this.scene);
     
-    this.localPlayer = new Snowman(this.scene, true);
+    this.localPlayer = new Snowman(this.scene, true, 'blue');
     this.localPlayer.setPosition(0, 0, 0);
     this.localPlayer.setRotation(0);
     
@@ -64,6 +65,10 @@ export class GameEngine {
     
     this.thirdPersonCamera.update(0.016);
     this.camera.position.copy(this.camera.position);
+    
+    if (!this.isNetworked) {
+      this._createAIPlayers();
+    }
     
     window.addEventListener('resize', () => this._onResize());
     
@@ -78,6 +83,100 @@ export class GameEngine {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+  
+  _createAIPlayers() {
+    const aiCount = 5;
+    const spawnRadius = 15;
+    
+    for (let i = 0; i < aiCount; i++) {
+      const angle = (i / aiCount) * Math.PI * 2;
+      const x = Math.cos(angle) * spawnRadius;
+      const z = Math.sin(angle) * spawnRadius;
+      
+      const snowman = new Snowman(this.scene, false, 'red');
+      snowman.setPosition(x, 0, z);
+      snowman.setRotation(angle + Math.PI);
+      
+      const aiData = {
+        snowman,
+        targetYaw: angle + Math.PI,
+        moveTimer: 0,
+        moveDirection: new THREE.Vector2(
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2
+        ).normalize(),
+        state: 'patrol'
+      };
+      
+      this.aiPlayers.push(aiData);
+    }
+    
+    this._updatePlayerCount();
+  }
+  
+  _updateAI(deltaTime) {
+    const playerPos = this.localPlayer.getPosition();
+    
+    for (const ai of this.aiPlayers) {
+      ai.moveTimer -= deltaTime;
+      
+      if (ai.moveTimer <= 0) {
+        ai.moveTimer = 2 + Math.random() * 3;
+        
+        const toPlayer = new THREE.Vector2(
+          playerPos.x - ai.snowman.getPosition().x,
+          playerPos.z - ai.snowman.getPosition().z
+        );
+        
+        const dist = toPlayer.length();
+        
+        if (dist < 12 && Math.random() > 0.3) {
+          toPlayer.normalize();
+          ai.moveDirection.copy(toPlayer);
+          ai.targetYaw = Math.atan2(toPlayer.x, toPlayer.y);
+          ai.state = 'chase';
+        } else {
+          ai.moveDirection.set(
+            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 2
+          ).normalize();
+          ai.targetYaw = Math.atan2(ai.moveDirection.x, ai.moveDirection.y);
+          ai.state = 'patrol';
+        }
+      }
+      
+      const currentYaw = ai.snowman.getRotation();
+      let yawDiff = ai.targetYaw - currentYaw;
+      while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+      while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+      
+      const newYaw = currentYaw + yawDiff * Math.min(1, deltaTime * 3);
+      ai.snowman.setRotation(newYaw);
+      
+      const speed = ai.state === 'chase' ? 3.5 : 2.5;
+      const moveAmount = speed * deltaTime;
+      
+      const currentPos = ai.snowman.getPosition();
+      let newX = currentPos.x + ai.moveDirection.x * moveAmount;
+      let newZ = currentPos.z + ai.moveDirection.y * moveAmount;
+      
+      if (!this.mapGenerator.checkCollision(newX, currentPos.z, GAME_CONFIG.PLAYER_RADIUS)) {
+        currentPos.x = newX;
+      } else {
+        ai.moveDirection.x *= -1;
+        ai.moveTimer = 0;
+      }
+      
+      if (!this.mapGenerator.checkCollision(currentPos.x, newZ, GAME_CONFIG.PLAYER_RADIUS)) {
+        currentPos.z = newZ;
+      } else {
+        ai.moveDirection.y *= -1;
+        ai.moveTimer = 0;
+      }
+      
+      ai.snowman.setPosition(currentPos.x, 0, currentPos.z);
+    }
   }
   
   start() {
@@ -159,6 +258,10 @@ export class GameEngine {
     
     this.thirdPersonCamera.update(deltaTime);
     
+    if (!this.isNetworked) {
+      this._updateAI(deltaTime);
+    }
+    
     if (this.isNetworked && this.networkClient) {
       const now = Date.now();
       if (now - this.lastNetworkUpdate > 1000 / GAME_CONFIG.NETWORK_TICK_RATE) {
@@ -179,7 +282,7 @@ export class GameEngine {
   _onPlayerJoin(playerData) {
     if (playerData.id === this.networkClient.playerId) return;
     
-    const snowman = new Snowman(this.scene, false);
+    const snowman = new Snowman(this.scene, false, 'red');
     snowman.setPosition(playerData.x || 0, 0, playerData.z || 0);
     snowman.setRotation(playerData.yaw || 0);
     
@@ -207,7 +310,7 @@ export class GameEngine {
       let player = this.remotePlayers.get(playerData.id);
       if (!player) {
         player = {
-          snowman: new Snowman(this.scene, false),
+          snowman: new Snowman(this.scene, false, 'red'),
           data: playerData
         };
         this.remotePlayers.set(playerData.id, player);
@@ -222,7 +325,7 @@ export class GameEngine {
   }
   
   _updatePlayerCount() {
-    const count = 1 + this.remotePlayers.size;
+    const count = 1 + this.remotePlayers.size + this.aiPlayers.length;
     document.getElementById('player-count').textContent = `玩家: ${count}`;
   }
   
@@ -233,6 +336,11 @@ export class GameEngine {
       player.snowman.remove();
     }
     this.remotePlayers.clear();
+    
+    for (const ai of this.aiPlayers) {
+      ai.snowman.remove();
+    }
+    this.aiPlayers = [];
     
     if (this.localPlayer) {
       this.localPlayer.remove();
