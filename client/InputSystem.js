@@ -5,6 +5,8 @@ export class InputSystem {
     this.canvas = canvas;
     this.keys = {};
     this.isPointerLocked = false;
+    this.pointerLockAvailable = true;
+    this.isDragging = false;
     
     this.mouse = {
       deltaX: 0,
@@ -52,13 +54,31 @@ export class InputSystem {
     });
   }
   
+  _requestPointerLock() {
+    if (this.isPointerLocked || this.isTouchDevice || !this.pointerLockAvailable) return;
+    try {
+      this.canvas.requestPointerLock();
+    } catch (e) {
+      this.pointerLockAvailable = false;
+      const hint = document.getElementById('pointer-lock-hint');
+      if (hint) {
+        hint.textContent = '按住鼠标拖动控制视角';
+      }
+    }
+  }
+
   _initMouse() {
     this.canvas.addEventListener('click', () => {
-      if (!this.isPointerLocked && !this.isTouchDevice) {
-        this.canvas.requestPointerLock();
-      }
+      this._requestPointerLock();
     });
-    
+
+    const hint = document.getElementById('pointer-lock-hint');
+    if (hint) {
+      hint.addEventListener('click', () => {
+        this._requestPointerLock();
+      });
+    }
+
     document.addEventListener('pointerlockchange', () => {
       this.isPointerLocked = document.pointerLockElement === this.canvas;
       const hint = document.getElementById('pointer-lock-hint');
@@ -67,17 +87,34 @@ export class InputSystem {
           hint.classList.remove('active');
         } else {
           hint.classList.add('active');
+          if (!this.pointerLockAvailable) {
+            hint.textContent = '按住鼠标拖动控制视角';
+          }
         }
       }
     });
-    
+
     document.addEventListener('mousemove', (e) => {
       if (this.isPointerLocked) {
         this.mouse.deltaX -= e.movementX * GAME_CONFIG.MOUSE_SENSITIVITY;
         this.mouse.deltaY -= e.movementY * GAME_CONFIG.MOUSE_SENSITIVITY * 0.8;
+      } else if (this.isDragging && !this.pointerLockAvailable) {
+        this.mouse.deltaX -= e.movementX * GAME_CONFIG.MOUSE_SENSITIVITY;
+        this.mouse.deltaY -= e.movementY * GAME_CONFIG.MOUSE_SENSITIVITY * 0.8;
       }
     });
-    
+
+    if (!this.isTouchDevice) {
+      document.addEventListener('mousedown', (e) => {
+        if (!this.pointerLockAvailable && !this.isPointerLocked && e.button === 0) {
+          this.isDragging = true;
+        }
+      });
+      document.addEventListener('mouseup', () => {
+        this.isDragging = false;
+      });
+    }
+
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
   
@@ -318,7 +355,7 @@ export class InputSystem {
     
     if (this.gamepadConnected && this.gamepad.lookJoystick.active) {
       return {
-        yaw: -this.gamepad.lookJoystick.x * GAME_CONFIG.GAMEPAD_SENSITIVITY * GAME_CONFIG.GAMEPAD_LOOK_SPEED * 100 * 0.5,
+        yaw: -this.gamepad.lookJoystick.x * GAME_CONFIG.GAMEPAD_SENSITIVITY * GAME_CONFIG.GAMEPAD_LOOK_SPEED * 100 * 0.25,
         pitch: -this.gamepad.lookJoystick.y * GAME_CONFIG.GAMEPAD_SENSITIVITY * GAME_CONFIG.GAMEPAD_LOOK_SPEED * 100 * 0.8
       };
     }
@@ -335,9 +372,7 @@ export class InputSystem {
   }
   
   requestPointerLock() {
-    if (!this.isTouchDevice && !this.isPointerLocked) {
-      this.canvas.requestPointerLock();
-    }
+    this._requestPointerLock();
   }
   
   exitPointerLock() {
