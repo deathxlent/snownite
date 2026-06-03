@@ -1,45 +1,16 @@
 import * as THREE from 'three';
 import { COLORS, GAME_CONFIG } from '../shared/constants.js';
+import { GridGround } from './GridGround.js';
 
 export class MapGenerator {
   constructor(scene) {
     this.scene = scene;
     this.colliders = [];
-    this._createGround();
+    this.gridGround = new GridGround(scene);
     this._createSnowHouses();
     this._createTrees();
     this._createLighting();
     this._createFog();
-  }
-  
-  _createGround() {
-    const groundGeometry = new THREE.PlaneGeometry(
-      GAME_CONFIG.WORLD_SIZE,
-      GAME_CONFIG.WORLD_SIZE,
-      50,
-      50
-    );
-    
-    const positions = groundGeometry.attributes.position;
-    for (let i = 0; i < positions.count; i++) {
-      const x = positions.getX(i);
-      const y = positions.getY(i);
-      const noise = Math.sin(x * 0.1) * Math.cos(y * 0.1) * 0.3;
-      positions.setZ(i, noise);
-    }
-    groundGeometry.computeVertexNormals();
-    
-    const groundMaterial = new THREE.MeshStandardMaterial({
-      color: COLORS.GROUND,
-      roughness: 0.9,
-      metalness: 0.0
-    });
-    
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    
-    this.scene.add(ground);
   }
   
   _createSnowHouses() {

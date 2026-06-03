@@ -190,6 +190,41 @@
       text-align: center;
     }
     
+    #snowball-count {
+      position: absolute;
+      bottom: 140px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.5rem 1.5rem;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      border-radius: 20px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      z-index: 45;
+    }
+    
+    #gather-progress-bar {
+      position: absolute;
+      bottom: 180px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 15px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 8px;
+      border: 2px solid rgba(255,255,255,0.3);
+      display: none;
+      z-index: 45;
+    }
+    
+    #gather-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4a90d9, #67b26f);
+      border-radius: 6px;
+      transition: width 0.05s linear;
+    }
+    
     #pointer-lock-hint {
       position: absolute;
       top: 50%;
@@ -325,14 +360,54 @@
       background: rgba(74, 144, 217, 0.6);
     }
     
+    #gather-btn {
+      width: 90px;
+      height: 90px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.4);
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      touch-action: none;
+      pointer-events: auto;
+      font-size: 0.9rem;
+      color: white;
+      font-weight: bold;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+    
+    #gather-btn:active {
+      background: rgba(103, 178, 111, 0.5);
+      transform: scale(0.95);
+    }
+    
+    #gather-btn.gathering {
+      background: rgba(103, 178, 111, 0.6);
+      animation: pulse 0.8s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
     .right-controls {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
       gap: 20px;
     }
+    
+    .left-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 20px;
+    }
   </style>
-  <script type="module" crossorigin src="/assets/index-PYHylD-n.js"></script>
+  <script type="module" crossorigin src="/assets/index-rDQccZ0O.js"></script>
 </head>
 <body>
   <div id="game-container">
@@ -359,19 +434,28 @@
     <div id="game-ui">
       <button id="back-btn">← 返回菜单</button>
       <div id="player-count">玩家: 1</div>
+      <div id="snowball-count">⛄ 0 / 20</div>
+      <div id="gather-progress-bar">
+        <div id="gather-progress-fill"></div>
+      </div>
       <div id="stamina-bar">
         <div id="stamina-fill"></div>
       </div>
       <div id="controls-hint">
-        WASD 移动 · 鼠标 视角 · 空格 加速
+        WASD 移动 · 鼠标 视角 · 空格 加速 · 右键 攒雪球
       </div>
       <div id="pointer-lock-hint">点击屏幕锁定鼠标控制视角</div>
     </div>
     
     <div id="touch-controls">
-      <div class="joystick" id="move-joystick">
-        <div class="joystick-knob" id="move-knob"></div>
-        <span class="joystick-label">移动</span>
+      <div class="left-controls">
+        <div id="gather-btn">
+          <span>攒雪球</span>
+        </div>
+        <div class="joystick" id="move-joystick">
+          <div class="joystick-knob" id="move-knob"></div>
+          <span class="joystick-label">移动</span>
+        </div>
       </div>
       <div class="right-controls">
         <div id="sprint-btn">

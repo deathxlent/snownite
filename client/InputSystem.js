@@ -27,6 +27,8 @@ export class InputSystem {
     
     this.sprintPressed = false;
     this.touchSprintPressed = false;
+    this.gatherPressed = false;
+    this.touchGatherPressed = false;
     
     this._initKeyboard();
     this._initMouse();
@@ -78,6 +80,18 @@ export class InputSystem {
   _initMouse() {
     this.canvas.addEventListener('click', () => {
       this._requestPointerLock();
+    });
+
+    this.canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 2) {
+        this.gatherPressed = true;
+      }
+    });
+
+    this.canvas.addEventListener('mouseup', (e) => {
+      if (e.button === 2) {
+        this.gatherPressed = false;
+      }
     });
 
     const hint = document.getElementById('pointer-lock-hint');
@@ -226,6 +240,47 @@ export class InputSystem {
       sprintBtn.addEventListener('mouseup', endSprintMouse);
       sprintBtn.addEventListener('mouseleave', endSprintMouse);
     }
+    
+    const gatherBtn = document.getElementById('gather-btn');
+    if (gatherBtn) {
+      const updateGatherUI = (pressed) => {
+        if (pressed) {
+          gatherBtn.classList.add('gathering');
+        } else {
+          gatherBtn.classList.remove('gathering');
+        }
+      };
+      
+      gatherBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.setTouchGatherPressed(true);
+        updateGatherUI(true);
+      }, { passive: false });
+      
+      const endGather = (e) => {
+        e.preventDefault();
+        this.setTouchGatherPressed(false);
+        updateGatherUI(false);
+      };
+      
+      gatherBtn.addEventListener('touchend', endGather, { passive: false });
+      gatherBtn.addEventListener('touchcancel', endGather, { passive: false });
+      
+      gatherBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.setTouchGatherPressed(true);
+        updateGatherUI(true);
+      });
+      
+      const endGatherMouse = () => {
+        this.setTouchGatherPressed(false);
+        updateGatherUI(false);
+      };
+      
+      gatherBtn.addEventListener('mouseup', endGatherMouse);
+      gatherBtn.addEventListener('mouseleave', endGatherMouse);
+    }
   }
   
   _findTouch(touchList, id) {
@@ -289,6 +344,7 @@ export class InputSystem {
     this.gamepad.lookJoystick.active = rightX !== 0 || rightY !== 0;
     
     this.gamepad.buttonA = gamepad.buttons[0] ? gamepad.buttons[0].pressed : false;
+    this.gamepad.buttonLT = gamepad.buttons[6] ? gamepad.buttons[6].pressed : false;
   }
   
   isSprintPressed() {
@@ -305,8 +361,26 @@ export class InputSystem {
     return this.sprintPressed;
   }
   
+  isGatherPressed() {
+    if (this.isTouchDevice) {
+      return this.touchGatherPressed;
+    }
+    
+    this._updateGamepadState();
+    
+    if (this.gamepadConnected && this.gamepad.buttonLT) {
+      return true;
+    }
+    
+    return this.gatherPressed;
+  }
+  
   setTouchSprintPressed(pressed) {
     this.touchSprintPressed = pressed;
+  }
+  
+  setTouchGatherPressed(pressed) {
+    this.touchGatherPressed = pressed;
   }
   
   getMovementInput() {

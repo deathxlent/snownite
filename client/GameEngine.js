@@ -4,6 +4,7 @@ import { InputSystem } from './InputSystem.js';
 import { MapGenerator } from './MapGenerator.js';
 import { Snowman } from './Snowman.js';
 import { ThirdPersonCamera } from './ThirdPersonCamera.js';
+import { SnowballManager } from './SnowballManager.js';
 
 export class GameEngine {
   constructor(canvas, isNetworked = false, networkClient = null) {
@@ -26,6 +27,8 @@ export class GameEngine {
     
     this.stamina = 1.0;
     this.isSprinting = false;
+    
+    this.snowballManager = null;
     
     this.isRunning = false;
     this.animationFrameId = null;
@@ -58,6 +61,7 @@ export class GameEngine {
     
     this.inputSystem = new InputSystem(this.canvas);
     this.mapGenerator = new MapGenerator(this.scene);
+    this.snowballManager = new SnowballManager(this.mapGenerator.gridGround);
     
     this.localPlayer = new Snowman(this.scene, true, 'blue');
     this.localPlayer.setPosition(0, 0, 0);
@@ -226,6 +230,7 @@ export class GameEngine {
     this.clock.start();
     this.inputSystem.showTouchControls(true);
     this.inputSystem.showPointerLockHint(true);
+    this.snowballManager._updateUI();
     this._gameLoop();
   }
   
@@ -256,6 +261,17 @@ export class GameEngine {
     const movement = this.inputSystem.getMovementInput();
     const look = this.inputSystem.getLookInput();
     const wantSprint = this.inputSystem.isSprintPressed();
+    const wantGather = this.inputSystem.isGatherPressed();
+    
+    const playerPos = this.localPlayer.getPosition();
+    const playerYaw = this.thirdPersonCamera.getYaw();
+    
+    if (!this.snowballManager.isGathering && wantGather) {
+      this.snowballManager.startGather(playerPos.x, playerPos.z, playerYaw);
+    }
+    
+    this.snowballManager.update(deltaTime, playerPos.x, playerPos.z, playerYaw);
+    this.snowballManager.updateGatherUI();
     
     this.thirdPersonCamera.updateLookInput(look.yaw, look.pitch);
     
