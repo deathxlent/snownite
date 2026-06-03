@@ -222,7 +222,69 @@
       height: 100%;
       background: linear-gradient(90deg, #4a90d9, #67b26f);
       border-radius: 6px;
-      transition: width 0.05s linear;
+      transition: width 0.05s linear, background 0.3s ease;
+    }
+    
+    #gather-countdown {
+      position: absolute;
+      bottom: 205px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.3rem 0.8rem;
+      background: rgba(0,0,0,0.7);
+      color: #67b26f;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      display: none;
+      z-index: 45;
+    }
+    
+    #consecutive-count {
+      position: absolute;
+      bottom: 235px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.4rem 1rem;
+      background: rgba(74, 144, 217, 0.8);
+      color: white;
+      border-radius: 15px;
+      font-size: 1rem;
+      font-weight: bold;
+      display: none;
+      z-index: 45;
+      transition: all 0.2s ease;
+    }
+    
+    #consecutive-count.speedup {
+      background: linear-gradient(90deg, #67b26f, #4a90d9);
+      animation: bounce 0.3s ease;
+    }
+    
+    #gather-speed {
+      position: absolute;
+      bottom: 265px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.3rem 0.8rem;
+      background: rgba(103, 178, 111, 0.9);
+      color: white;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      display: none;
+      z-index: 45;
+      animation: glow 1s infinite alternate;
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.1); }
+    }
+    
+    @keyframes glow {
+      from { box-shadow: 0 0 5px rgba(103, 178, 111, 0.5); }
+      to { box-shadow: 0 0 15px rgba(103, 178, 111, 0.8); }
     }
     
     #pointer-lock-hint {
@@ -434,6 +496,9 @@
       <button id="back-btn">← 返回菜单</button>
       <div id="player-count">玩家: 1</div>
       <div id="snowball-count">⛄ 0 / 20</div>
+      <div id="gather-speed">⚡ +0% 速度</div>
+      <div id="consecutive-count">连击 x0</div>
+      <div id="gather-countdown">0.0s</div>
       <div id="gather-progress-bar">
         <div id="gather-progress-fill"></div>
       </div>
@@ -441,7 +506,7 @@
         <div id="stamina-fill"></div>
       </div>
       <div id="controls-hint">
-        WASD 移动 · 鼠标 视角 · 空格 加速 · 右键 攒雪球
+        WASD 移动 · 鼠标 视角 · 空格 加速 · 右键(按住) 连续攒雪球
       </div>
       <div id="pointer-lock-hint">点击屏幕锁定鼠标控制视角</div>
     </div>

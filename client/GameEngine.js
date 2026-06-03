@@ -266,9 +266,7 @@ export class GameEngine {
     const playerPos = this.localPlayer.getPosition();
     const playerYaw = this.thirdPersonCamera.getYaw();
     
-    if (!this.snowballManager.isGathering && wantGather) {
-      this.snowballManager.startGather(playerPos.x, playerPos.z, playerYaw);
-    }
+    this.snowballManager.setHoldActive(wantGather);
     
     this.snowballManager.update(deltaTime, playerPos.x, playerPos.z, playerYaw);
     this.snowballManager.updateGatherUI();
