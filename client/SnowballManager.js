@@ -130,7 +130,7 @@ export class SnowballManager {
   _updateUI() {
     const countElement = document.getElementById('snowball-count');
     if (countElement) {
-      countElement.textContent = `⛄ ${this.snowballCount} / ${this.maxSnowballs}`;
+      countElement.textContent = `⚪ ${this.snowballCount} / ${this.maxSnowballs}`;
     }
   }
 
@@ -166,11 +166,13 @@ export class SnowballManager {
     if (consecutiveEl) {
       if (this.consecutiveCount > 0 && this.holdActive) {
         consecutiveEl.style.display = 'block';
-        consecutiveEl.textContent = `连击 x${this.consecutiveCount}`;
         if (this.consecutiveCount >= this.speedupThreshold) {
           consecutiveEl.classList.add('speedup');
+          const speedBonus = ((this.baseGatherDuration - this.currentGatherDuration) / this.baseGatherDuration * 100).toFixed(0);
+          consecutiveEl.textContent = `连续攒雪球 x${this.consecutiveCount}  ⚡ +${speedBonus}% 速度`;
         } else {
           consecutiveEl.classList.remove('speedup');
+          consecutiveEl.textContent = `连续攒雪球 x${this.consecutiveCount}`;
         }
       } else {
         consecutiveEl.style.display = 'none';
@@ -178,13 +180,7 @@ export class SnowballManager {
     }
 
     if (speedEl) {
-      if (this.consecutiveCount >= this.speedupThreshold && this.holdActive) {
-        speedEl.style.display = 'block';
-        const speedBonus = ((this.baseGatherDuration - this.currentGatherDuration) / this.baseGatherDuration * 100).toFixed(0);
-        speedEl.textContent = `⚡ +${speedBonus}% 速度`;
-      } else {
-        speedEl.style.display = 'none';
-      }
+      speedEl.style.display = 'none';
     }
   }
 }

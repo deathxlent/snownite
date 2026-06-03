@@ -5,6 +5,7 @@ import { MapGenerator } from './MapGenerator.js';
 import { Snowman } from './Snowman.js';
 import { ThirdPersonCamera } from './ThirdPersonCamera.js';
 import { SnowballManager } from './SnowballManager.js';
+import { SnowballThrower } from './SnowballThrower.js';
 
 export class GameEngine {
   constructor(canvas, isNetworked = false, networkClient = null) {
@@ -29,6 +30,7 @@ export class GameEngine {
     this.isSprinting = false;
     
     this.snowballManager = null;
+    this.snowballThrower = null;
     
     this.isRunning = false;
     this.animationFrameId = null;
@@ -62,6 +64,7 @@ export class GameEngine {
     this.inputSystem = new InputSystem(this.canvas);
     this.mapGenerator = new MapGenerator(this.scene);
     this.snowballManager = new SnowballManager(this.mapGenerator.gridGround);
+    this.snowballThrower = new SnowballThrower(this.scene, this.mapGenerator.gridGround);
     
     this.localPlayer = new Snowman(this.scene, true, 'blue');
     this.localPlayer.setPosition(0, 0, 0);
@@ -76,6 +79,8 @@ export class GameEngine {
     if (!this.isNetworked) {
       this._createAIPlayers();
     }
+    
+    this.snowballThrower.addCollider(this.localPlayer.collider);
     
     window.addEventListener('resize', () => this._onResize());
     
@@ -152,6 +157,7 @@ export class GameEngine {
       };
       
       this.aiPlayers.push(aiData);
+      this.snowballThrower.addCollider(snowman.collider);
     }
     
     this._updatePlayerCount();
@@ -220,6 +226,7 @@ export class GameEngine {
       }
       
       ai.snowman.setPosition(currentPos.x, 0, currentPos.z);
+      ai.snowman.update(deltaTime);
     }
   }
   
@@ -262,20 +269,40 @@ export class GameEngine {
     const look = this.inputSystem.getLookInput();
     const wantSprint = this.inputSystem.isSprintPressed();
     const wantGather = this.inputSystem.isGatherPressed();
+    const wantThrow = this.inputSystem.isThrowPressed();
+    const chargeTime = this.inputSystem.getThrowChargeTime();
     
     const playerPos = this.localPlayer.getPosition();
     const playerYaw = this.thirdPersonCamera.getYaw();
+    const playerPitch = this.thirdPersonCamera.getPitch();
     
     this.snowballManager.setHoldActive(wantGather);
     
     this.snowballManager.update(deltaTime, playerPos.x, playerPos.z, playerYaw);
     this.snowballManager.updateGatherUI();
     
+    if (!wantGather && this.snowballManager.snowballCount > 0) {
+      this.snowballThrower.update(
+        deltaTime,
+        playerPos,
+        playerYaw,
+        playerPitch,
+        wantThrow,
+        chargeTime,
+        this.snowballManager
+      );
+    } else {
+      if (wantThrow) {
+        this.inputSystem.resetThrowCharge();
+      }
+    }
+    
     this.thirdPersonCamera.updateLookInput(look.yaw, look.pitch);
     
     const cameraYaw = this.thirdPersonCamera.getYaw();
     
     this.localPlayer.setRotation(cameraYaw);
+    this.localPlayer.update(deltaTime);
     
     const forward = new THREE.Vector2(
       Math.sin(cameraYaw),

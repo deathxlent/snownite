@@ -9,6 +9,9 @@ export class Snowman {
     this.group = new THREE.Group();
     this.yaw = 0;
     this.pitch = 0;
+    this.isHit = false;
+    this.hitTimer = 0;
+    this.hitDuration = 0.3;
     
     this._createBody();
     this._createHead();
@@ -18,6 +21,14 @@ export class Snowman {
     this._createHat();
     
     scene.add(this.group);
+    
+    this.collider = {
+      type: 'cylinder',
+      x: 0,
+      z: 0,
+      radius: 0.75,
+      snowman: this
+    };
   }
   
   _createBody() {
@@ -226,6 +237,37 @@ export class Snowman {
   updateLookRotation(pitch) {
     this.pitch = Math.max(-0.5, Math.min(0.5, pitch));
     this.headGroup.rotation.x = -this.pitch * 0.5;
+  }
+  
+  hit() {
+    this.isHit = true;
+    this.hitTimer = this.hitDuration;
+    
+    const meshes = [this.bottomSphere, this.middleSphere, this.headSphere];
+    meshes.forEach(mesh => {
+      if (mesh.material) {
+        mesh.material.emissive = new THREE.Color(0xff6b6b);
+        mesh.material.emissiveIntensity = 0.5;
+      }
+    });
+  }
+  
+  update(deltaTime) {
+    this.collider.x = this.group.position.x;
+    this.collider.z = this.group.position.z;
+    
+    if (this.isHit) {
+      this.hitTimer -= deltaTime;
+      if (this.hitTimer <= 0) {
+        this.isHit = false;
+        const meshes = [this.bottomSphere, this.middleSphere, this.headSphere];
+        meshes.forEach(mesh => {
+          if (mesh.material) {
+            mesh.material.emissiveIntensity = 0;
+          }
+        });
+      }
+    }
   }
   
   remove() {

@@ -287,6 +287,53 @@
       to { box-shadow: 0 0 15px rgba(103, 178, 111, 0.8); }
     }
     
+    #charge-indicator {
+      position: absolute;
+      bottom: 265px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0.5rem 1.2rem;
+      background: rgba(0,0,0,0.7);
+      border-radius: 20px;
+      z-index: 45;
+    }
+    
+    #charge-ring-visual {
+      width: 30px;
+      height: 30px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: #f39c12;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    #charge-ring-visual.charged {
+      border-top-color: #e74c3c;
+      animation: spin 0.5s linear infinite, pulse-charge 0.5s ease-in-out infinite alternate;
+    }
+    
+    #charge-text {
+      color: white;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    
+    #charge-text.charged {
+      color: #e74c3c;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    @keyframes pulse-charge {
+      from { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
+      to { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+    }
+    
     #pointer-lock-hint {
       position: absolute;
       top: 50%;
@@ -455,6 +502,59 @@
       50% { transform: scale(1.05); }
     }
     
+    #throw-btn {
+      width: 100px;
+      height: 100px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.4);
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      touch-action: none;
+      pointer-events: auto;
+      font-size: 0.9rem;
+      color: white;
+      font-weight: bold;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+    
+    #throw-btn:active {
+      background: rgba(243, 156, 18, 0.5);
+      transform: scale(0.95);
+    }
+    
+    #throw-btn.throwing {
+      background: rgba(243, 156, 18, 0.6);
+    }
+    
+    #throw-btn.throwing.charged {
+      background: rgba(231, 76, 60, 0.7);
+      animation: pulse 0.5s infinite;
+    }
+    
+    #charge-ring {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 4px solid transparent;
+      border-top-color: #f39c12;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    #throw-btn.throwing #charge-ring {
+      opacity: 1;
+      animation: spin 1s linear infinite;
+    }
+    
+    #throw-btn.throwing.charged #charge-ring {
+      border-top-color: #e74c3c;
+      animation: spin 0.5s linear infinite;
+    }
+    
     .right-controls {
       display: flex;
       flex-direction: column;
@@ -495,10 +595,13 @@
     <div id="game-ui">
       <button id="back-btn">← 返回菜单</button>
       <div id="player-count">玩家: 1</div>
-      <div id="snowball-count">⛄ 0 / 20</div>
-      <div id="gather-speed">⚡ +0% 速度</div>
-      <div id="consecutive-count">连击 x0</div>
+      <div id="snowball-count">⚪ 0 / 20</div>
+      <div id="consecutive-count">连续攒雪球 x0</div>
       <div id="gather-countdown">0.0s</div>
+      <div id="charge-indicator" style="display: none;">
+        <div id="charge-ring-visual"></div>
+        <span id="charge-text">蓄力中...</span>
+      </div>
       <div id="gather-progress-bar">
         <div id="gather-progress-fill"></div>
       </div>
@@ -506,7 +609,7 @@
         <div id="stamina-fill"></div>
       </div>
       <div id="controls-hint">
-        WASD 移动 · 鼠标 视角 · 空格 加速 · 右键(按住) 连续攒雪球
+        WASD 移动 · 鼠标 视角 · 空格 加速 · 右键(按住)连续攒雪球 · 左键(按住)蓄力投掷
       </div>
       <div id="pointer-lock-hint">点击屏幕锁定鼠标控制视角</div>
     </div>
@@ -522,6 +625,10 @@
         </div>
       </div>
       <div class="right-controls">
+        <div id="throw-btn">
+          <span>投掷</span>
+          <div id="charge-ring"></div>
+        </div>
         <div id="sprint-btn">
           <span>加速</span>
         </div>

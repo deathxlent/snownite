@@ -1,0 +1,204 @@
+import * as THREE from 'three';
+import { GAME_CONFIG } from '../shared/constants.js';
+
+export class SnowballProjectile {
+  constructor(scene, startPos, velocity, isCharged = false, onHit = null, onGroundHit = null) {
+    this.scene = scene;
+    this.velocity = velocity.clone();
+    this.isCharged = isCharged;
+    this.onHit = onHit;
+    this.onGroundHit = onGroundHit;
+    this.active = true;
+    this.lifetime = 5;
+    this.gravity = GAME_CONFIG.THROW_GRAVITY;
+    this.radius = GAME_CONFIG.THROW_SNOWBALL_RADIUS;
+    this.trailPoints = [];
+    this.trailLifetime = GAME_CONFIG.THROW_TRAIL_LIFETIME;
+
+    this._createMesh(startPos);
+    this._createTrail();
+  }
+
+  _createMesh(pos) {
+    const geometry = new THREE.SphereGeometry(this.radius, 12, 12);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.8,
+      metalness: 0.0
+    });
+    
+    this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.position.copy(pos);
+    this.mesh.castShadow = true;
+    this.scene.add(this.mesh);
+  }
+
+  _createTrail() {
+    const trailGeometry = new THREE.BufferGeometry();
+    const trailMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.08,
+      transparent: true,
+      opacity: 0.6
+    });
+    
+    this.trail = new THREE.Points(trailGeometry, trailMaterial);
+    this.scene.add(this.trail);
+  }
+
+  _updateTrail() {
+    this.trailPoints.push({
+      position: this.mesh.position.clone(),
+      time: 0
+    });
+
+    const positions = [];
+    for (let i = this.trailPoints.length - 1; i >= 0; i--) {
+      const point = this.trailPoints[i];
+      point.time += 0.016;
+      
+      if (point.time > this.trailLifetime) {
+        this.trailPoints.splice(i, 1);
+        continue;
+      }
+      
+      positions.push(point.position.x, point.position.y, point.position.z);
+    }
+
+    this.trail.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    this.trail.geometry.attributes.position.needsUpdate = true;
+  }
+
+  _createShatterEffect() {
+    const particleCount = this.isCharged ? 20 : 12;
+    const geometry = new THREE.BufferGeometry();
+    const positions = [];
+    const velocities = [];
+    
+    for (let i = 0; i < particleCount; i++) {
+      positions.push(this.mesh.position.x, this.mesh.position.y, this.mesh.position.z);
+      velocities.push(
+        (Math.random() - 0.5) * 4,
+        Math.random() * 3,
+        (Math.random() - 0.5) * 4
+      );
+    }
+    
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    
+    const material = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.1,
+      transparent: true,
+      opacity: 1
+    });
+    
+    const particles = new THREE.Points(geometry, material);
+    this.scene.add(particles);
+    
+    let life = 0.5;
+    const animate = () => {
+      life -= 0.016;
+      if (life <= 0) {
+        this.scene.remove(particles);
+        geometry.dispose();
+        material.dispose();
+        return;
+      }
+      
+      const posAttr = particles.geometry.attributes.position;
+      for (let i = 0; i < particleCount; i++) {
+        posAttr.setX(i, posAttr.getX(i) + velocities[i * 3] * 0.016);
+        posAttr.setY(i, posAttr.getY(i) + velocities[i * 3 + 1] * 0.016);
+        posAttr.setZ(i, posAttr.getZ(i) + velocities[i * 3 + 2] * 0.016);
+        velocities[i * 3 + 1] -= this.gravity * 0.016;
+      }
+      posAttr.needsUpdate = true;
+      material.opacity = life * 2;
+      
+      requestAnimationFrame(animate);
+    };
+    animate();
+  }
+
+  update(deltaTime, colliders) {
+    if (!this.active) return;
+
+    this.lifetime -= deltaTime;
+    if (this.lifetime <= 0) {
+      this.destroy();
+      return;
+    }
+
+    this.velocity.y -= this.gravity * deltaTime;
+    
+    const oldPos = this.mesh.position.clone();
+    this.mesh.position.x += this.velocity.x * deltaTime;
+    this.mesh.position.y += this.velocity.y * deltaTime;
+    this.mesh.position.z += this.velocity.z * deltaTime;
+
+    this._updateTrail();
+
+    if (this.mesh.position.y <= this.radius) {
+      this.mesh.position.y = this.radius;
+      this._createShatterEffect();
+      if (this.onGroundHit) {
+        this.onGroundHit(this.mesh.position.x, this.mesh.position.z);
+      }
+      this.destroy();
+      return;
+    }
+
+    for (const collider of colliders) {
+      if (this._checkCollision(collider)) {
+        this._createShatterEffect();
+        if (this.onHit) {
+          this.onHit(collider);
+        }
+        this.destroy();
+        return;
+      }
+    }
+  }
+
+  _checkCollision(collider) {
+    const pos = this.mesh.position;
+    
+    if (collider.type === 'cylinder') {
+      const dx = pos.x - collider.x;
+      const dz = pos.z - collider.z;
+      const distXZ = Math.sqrt(dx * dx + dz * dz);
+      
+      if (distXZ < collider.radius + this.radius) {
+        if (pos.y > 0 && pos.y < 3.5) {
+          return true;
+        }
+      }
+    }
+    
+    if (collider.snowman) {
+      const snowmanPos = collider.snowman.getPosition();
+      const dx = pos.x - snowmanPos.x;
+      const dz = pos.z - snowmanPos.z;
+      const distXZ = Math.sqrt(dx * dx + dz * dz);
+      
+      if (distXZ < 0.75 + this.radius) {
+        if (pos.y > 0.5 && pos.y < 3.0) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  destroy() {
+    this.active = false;
+    this.scene.remove(this.mesh);
+    this.scene.remove(this.trail);
+    this.mesh.geometry.dispose();
+    this.mesh.material.dispose();
+    this.trail.geometry.dispose();
+    this.trail.material.dispose();
+  }
+}

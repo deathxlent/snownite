@@ -29,6 +29,9 @@ export class InputSystem {
     this.touchSprintPressed = false;
     this.gatherPressed = false;
     this.touchGatherPressed = false;
+    this.throwPressed = false;
+    this.throwPressStartTime = 0;
+    this.touchThrowPressed = false;
     
     this._initKeyboard();
     this._initMouse();
@@ -86,11 +89,18 @@ export class InputSystem {
       if (e.button === 2) {
         this.gatherPressed = true;
       }
+      if (e.button === 0 && this.isPointerLocked) {
+        this.throwPressed = true;
+        this.throwPressStartTime = Date.now();
+      }
     });
 
     this.canvas.addEventListener('mouseup', (e) => {
       if (e.button === 2) {
         this.gatherPressed = false;
+      }
+      if (e.button === 0) {
+        this.throwPressed = false;
       }
     });
 
@@ -281,6 +291,47 @@ export class InputSystem {
       gatherBtn.addEventListener('mouseup', endGatherMouse);
       gatherBtn.addEventListener('mouseleave', endGatherMouse);
     }
+    
+    const throwBtn = document.getElementById('throw-btn');
+    if (throwBtn) {
+      const updateThrowUI = (pressed) => {
+        if (pressed) {
+          throwBtn.classList.add('throwing');
+        } else {
+          throwBtn.classList.remove('throwing');
+        }
+      };
+      
+      throwBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.setTouchThrowPressed(true);
+        updateThrowUI(true);
+      }, { passive: false });
+      
+      const endThrow = (e) => {
+        e.preventDefault();
+        this.setTouchThrowPressed(false);
+        updateThrowUI(false);
+      };
+      
+      throwBtn.addEventListener('touchend', endThrow, { passive: false });
+      throwBtn.addEventListener('touchcancel', endThrow, { passive: false });
+      
+      throwBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.setTouchThrowPressed(true);
+        updateThrowUI(true);
+      });
+      
+      const endThrowMouse = () => {
+        this.setTouchThrowPressed(false);
+        updateThrowUI(false);
+      };
+      
+      throwBtn.addEventListener('mouseup', endThrowMouse);
+      throwBtn.addEventListener('mouseleave', endThrowMouse);
+    }
   }
   
   _findTouch(touchList, id) {
@@ -345,6 +396,12 @@ export class InputSystem {
     
     this.gamepad.buttonA = gamepad.buttons[0] ? gamepad.buttons[0].pressed : false;
     this.gamepad.buttonLT = gamepad.buttons[6] ? gamepad.buttons[6].pressed : false;
+    this.gamepad.buttonRT = gamepad.buttons[7] ? gamepad.buttons[7].pressed : false;
+    
+    if (this.gamepad.buttonRT && !this.gamepad.buttonRTPrev) {
+      this.throwPressStartTime = Date.now();
+    }
+    this.gamepad.buttonRTPrev = this.gamepad.buttonRT;
   }
   
   isSprintPressed() {
@@ -375,12 +432,42 @@ export class InputSystem {
     return this.gatherPressed;
   }
   
+  isThrowPressed() {
+    if (this.isTouchDevice) {
+      return this.touchThrowPressed;
+    }
+    
+    this._updateGamepadState();
+    
+    if (this.gamepadConnected && this.gamepad.buttonRT) {
+      return true;
+    }
+    
+    return this.throwPressed;
+  }
+  
+  getThrowChargeTime() {
+    if (!this.isThrowPressed()) return 0;
+    return (Date.now() - this.throwPressStartTime) / 1000;
+  }
+  
+  resetThrowCharge() {
+    this.throwPressStartTime = Date.now();
+  }
+  
   setTouchSprintPressed(pressed) {
     this.touchSprintPressed = pressed;
   }
   
   setTouchGatherPressed(pressed) {
     this.touchGatherPressed = pressed;
+  }
+  
+  setTouchThrowPressed(pressed) {
+    if (pressed && !this.touchThrowPressed) {
+      this.throwPressStartTime = Date.now();
+    }
+    this.touchThrowPressed = pressed;
   }
   
   getMovementInput() {
