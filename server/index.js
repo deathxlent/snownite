@@ -54,23 +54,22 @@ function assignTeam() {
   return blueCount <= redCount ? 'blue' : 'red';
 }
 
-function getSpawnPosition(team) {
-  const spawnRadius = 8;
-  const angleOffset = team === 'blue' ? 0 : Math.PI;
-  const existingPositions = [];
-  
+function assignSpawnPosition(team) {
+  const spawnRadius = 15;
+  const teamPlayers = [];
   for (const player of players.values()) {
     if (player.team === team) {
-      existingPositions.push({ x: player.x, z: player.z });
+      teamPlayers.push(player);
     }
   }
-  
-  const aiOffset = existingPositions.length;
-  const baseAngle = angleOffset + (aiOffset * Math.PI / 6) - (Math.PI / 6);
-  const x = Math.cos(baseAngle) * spawnRadius;
-  const z = Math.sin(baseAngle) * spawnRadius;
-  
-  return { x, z, yaw: team === 'blue' ? Math.PI / 2 : -Math.PI / 2 };
+  const playerIndex = teamPlayers.length;
+  const baseAngle = team === 'blue' ? 0 : Math.PI;
+  const angle = baseAngle + (playerIndex / 5) * Math.PI * 0.8 - Math.PI * 0.4;
+  return {
+    x: Math.cos(angle) * spawnRadius,
+    z: Math.sin(angle) * spawnRadius,
+    yaw: team === 'blue' ? 0 : Math.PI
+  };
 }
 
 wss.on('connection', (ws) => {
@@ -78,7 +77,7 @@ wss.on('connection', (ws) => {
   console.log(`🆕 新玩家连接: ${playerId}`);
   
   const team = assignTeam();
-  const spawnPos = getSpawnPosition(team);
+  const spawnPos = assignSpawnPosition(team);
   
   const playerData = {
     id: playerId,
@@ -97,6 +96,9 @@ wss.on('connection', (ws) => {
     data: {
       playerId: playerId,
       team: team,
+      spawnX: spawnPos.x,
+      spawnZ: spawnPos.z,
+      spawnYaw: spawnPos.yaw,
       players: getPlayersList()
     }
   });

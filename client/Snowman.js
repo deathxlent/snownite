@@ -2,18 +2,18 @@ import * as THREE from 'three';
 import { COLORS } from '../shared/constants.js';
 
 export class Snowman {
-  constructor(scene, isLocalPlayer = false, team = 'blue', showNameLabel = false, playerName = '', isAI = false, isAllyAI = false) {
+  constructor(scene, isLocalPlayer = false, team = 'blue', showNameLabel = false, playerName = '', isAI = false) {
     this.scene = scene;
     this.isLocalPlayer = isLocalPlayer;
     this.team = team;
     this.isAI = isAI;
-    this.isAllyAI = isAllyAI;
     this.group = new THREE.Group();
     this.yaw = 0;
     this.pitch = 0;
     this.isHit = false;
     this.hitTimer = 0;
     this.hitDuration = 0.3;
+    this.camera = null;
     
     this._createBody();
     this._createHead();
@@ -161,7 +161,7 @@ export class Snowman {
   _createScarf() {
     let scarfColor;
     if (this.isAI) {
-      scarfColor = this.isAllyAI ? 0x1a4d8c : 0x8B6914;
+      scarfColor = this.team === 'blue' ? 0x1e3a5f : 0x8B6914;
     } else {
       scarfColor = this.team === 'blue' ? 0x4a90d9 : 0xd94a4a;
     }
@@ -195,7 +195,7 @@ export class Snowman {
     const hatColor = 0x2c3e50;
     let ribbonColor;
     if (this.isAI) {
-      ribbonColor = this.isAllyAI ? 0x1a4d8c : 0x8B6914;
+      ribbonColor = this.team === 'blue' ? 0x1e3a5f : 0x8B6914;
     } else {
       ribbonColor = this.team === 'blue' ? 0x4a90d9 : 0xd94a4a;
     }
@@ -252,6 +252,10 @@ export class Snowman {
     this.headGroup.rotation.x = -this.pitch * 0.5;
   }
   
+  setCamera(camera) {
+    this.camera = camera;
+  }
+  
   hit() {
     this.isHit = true;
     this.hitTimer = this.hitDuration;
@@ -270,8 +274,8 @@ export class Snowman {
     this.indicatorGroup.position.y = 4.0;
     
     if (isAI) {
-      const cubeColor = this.isAllyAI ? 0x1a4d8c : 0x8B6914;
       const cubeGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+      const cubeColor = this.team === 'blue' ? 0x1e3a5f : 0x8B6914;
       const cubeMaterial = new THREE.MeshStandardMaterial({
         color: cubeColor,
         roughness: 0.7,
@@ -329,8 +333,13 @@ export class Snowman {
     this.collider.x = this.group.position.x;
     this.collider.z = this.group.position.z;
     
-    if (this.indicatorGroup) {
-      this.indicatorGroup.rotation.y = this.yaw;
+    if (this.indicatorGroup && this.camera) {
+      const indicatorWorldPos = new THREE.Vector3();
+      this.indicatorGroup.getWorldPosition(indicatorWorldPos);
+      const lookAtPos = new THREE.Vector3();
+      this.camera.getWorldPosition(lookAtPos);
+      lookAtPos.y = indicatorWorldPos.y;
+      this.indicatorGroup.lookAt(lookAtPos);
     }
     
     if (this.isHit) {

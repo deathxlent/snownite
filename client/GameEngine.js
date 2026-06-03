@@ -75,18 +75,17 @@ export class GameEngine {
     this.snowballThrower = new SnowballThrower(this.scene, this.mapGenerator.gridGround);
     
     this.localPlayer = new Snowman(this.scene, true, this.localTeam, true, this.playerName);
-    
+    this.localPlayer.setCamera(this.camera);
     if (this.isNetworked && this.networkClient) {
-      this.localPlayer.setPosition(this.networkClient.spawnX, 0, this.networkClient.spawnZ);
-      this.localPlayer.setRotation(this.networkClient.spawnYaw);
-      this.thirdPersonCamera = new ThirdPersonCamera(this.camera, this.localPlayer);
-      this.thirdPersonCamera.setRotation(this.networkClient.spawnYaw, -0.2);
+      this.localPlayer.setPosition(this.networkClient.playerSpawnX, 0, this.networkClient.playerSpawnZ);
+      this.localPlayer.setRotation(this.networkClient.playerSpawnYaw);
     } else {
       this.localPlayer.setPosition(0, 0, 0);
       this.localPlayer.setRotation(0);
-      this.thirdPersonCamera = new ThirdPersonCamera(this.camera, this.localPlayer);
-      this.thirdPersonCamera.setRotation(0, -0.2);
     }
+    
+    this.thirdPersonCamera = new ThirdPersonCamera(this.camera, this.localPlayer);
+    this.thirdPersonCamera.setRotation(0, -0.2);
     
     this.thirdPersonCamera.update(0.016);
     this.camera.position.copy(this.camera.position);
@@ -162,7 +161,8 @@ export class GameEngine {
         const x = Math.cos(angle) * spawnRadius;
         const z = Math.sin(angle) * spawnRadius;
         
-        const snowman = new Snowman(this.scene, false, team, false, '', true, teamIsLocal);
+        const snowman = new Snowman(this.scene, false, team, false, '', true);
+        snowman.setCamera(this.camera);
         snowman.setPosition(x, 0, z);
         snowman.setRotation(angle + Math.PI);
         
@@ -519,6 +519,7 @@ export class GameEngine {
     const playerTeam = playerData.team || 'red';
     const isTeammate = playerTeam === this.localTeam;
     const snowman = new Snowman(this.scene, false, playerTeam, isTeammate, playerData.name || '', false);
+    snowman.setCamera(this.camera);
     snowman.setPosition(playerData.x || 0, 0, playerData.z || 0);
     snowman.setRotation(playerData.yaw || 0);
     
@@ -547,8 +548,10 @@ export class GameEngine {
       if (!player) {
         const playerTeam = playerData.team || 'red';
         const isTeammate = playerTeam === this.localTeam;
+        const snowman = new Snowman(this.scene, false, playerTeam, isTeammate, playerData.name || '', false);
+        snowman.setCamera(this.camera);
         player = {
-          snowman: new Snowman(this.scene, false, playerTeam, isTeammate, playerData.name || '', false),
+          snowman: snowman,
           data: playerData
         };
         this.remotePlayers.set(playerData.id, player);
