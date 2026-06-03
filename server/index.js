@@ -54,19 +54,39 @@ function assignTeam() {
   return blueCount <= redCount ? 'blue' : 'red';
 }
 
+function getSpawnPosition(team) {
+  const spawnRadius = 8;
+  const angleOffset = team === 'blue' ? 0 : Math.PI;
+  const existingPositions = [];
+  
+  for (const player of players.values()) {
+    if (player.team === team) {
+      existingPositions.push({ x: player.x, z: player.z });
+    }
+  }
+  
+  const aiOffset = existingPositions.length;
+  const baseAngle = angleOffset + (aiOffset * Math.PI / 6) - (Math.PI / 6);
+  const x = Math.cos(baseAngle) * spawnRadius;
+  const z = Math.sin(baseAngle) * spawnRadius;
+  
+  return { x, z, yaw: team === 'blue' ? Math.PI / 2 : -Math.PI / 2 };
+}
+
 wss.on('connection', (ws) => {
   const playerId = generateId();
   console.log(`🆕 新玩家连接: ${playerId}`);
   
   const team = assignTeam();
+  const spawnPos = getSpawnPosition(team);
   
   const playerData = {
     id: playerId,
     name: 'Unknown',
     team: team,
-    x: 0,
-    z: 0,
-    yaw: 0,
+    x: spawnPos.x,
+    z: spawnPos.z,
+    yaw: spawnPos.yaw,
     ws: ws
   };
   

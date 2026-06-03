@@ -75,11 +75,18 @@ export class GameEngine {
     this.snowballThrower = new SnowballThrower(this.scene, this.mapGenerator.gridGround);
     
     this.localPlayer = new Snowman(this.scene, true, this.localTeam, true, this.playerName);
-    this.localPlayer.setPosition(0, 0, 0);
-    this.localPlayer.setRotation(0);
     
-    this.thirdPersonCamera = new ThirdPersonCamera(this.camera, this.localPlayer);
-    this.thirdPersonCamera.setRotation(0, -0.2);
+    if (this.isNetworked && this.networkClient) {
+      this.localPlayer.setPosition(this.networkClient.spawnX, 0, this.networkClient.spawnZ);
+      this.localPlayer.setRotation(this.networkClient.spawnYaw);
+      this.thirdPersonCamera = new ThirdPersonCamera(this.camera, this.localPlayer);
+      this.thirdPersonCamera.setRotation(this.networkClient.spawnYaw, -0.2);
+    } else {
+      this.localPlayer.setPosition(0, 0, 0);
+      this.localPlayer.setRotation(0);
+      this.thirdPersonCamera = new ThirdPersonCamera(this.camera, this.localPlayer);
+      this.thirdPersonCamera.setRotation(0, -0.2);
+    }
     
     this.thirdPersonCamera.update(0.016);
     this.camera.position.copy(this.camera.position);
@@ -155,7 +162,7 @@ export class GameEngine {
         const x = Math.cos(angle) * spawnRadius;
         const z = Math.sin(angle) * spawnRadius;
         
-        const snowman = new Snowman(this.scene, false, team, false, '', true);
+        const snowman = new Snowman(this.scene, false, team, false, '', true, teamIsLocal);
         snowman.setPosition(x, 0, z);
         snowman.setRotation(angle + Math.PI);
         

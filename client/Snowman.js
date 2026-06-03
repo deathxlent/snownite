@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import { COLORS } from '../shared/constants.js';
 
 export class Snowman {
-  constructor(scene, isLocalPlayer = false, team = 'blue', showNameLabel = false, playerName = '', isAI = false) {
+  constructor(scene, isLocalPlayer = false, team = 'blue', showNameLabel = false, playerName = '', isAI = false, isAllyAI = false) {
     this.scene = scene;
     this.isLocalPlayer = isLocalPlayer;
     this.team = team;
     this.isAI = isAI;
+    this.isAllyAI = isAllyAI;
     this.group = new THREE.Group();
     this.yaw = 0;
     this.pitch = 0;
@@ -160,7 +161,7 @@ export class Snowman {
   _createScarf() {
     let scarfColor;
     if (this.isAI) {
-      scarfColor = 0x8B6914;
+      scarfColor = this.isAllyAI ? 0x1a4d8c : 0x8B6914;
     } else {
       scarfColor = this.team === 'blue' ? 0x4a90d9 : 0xd94a4a;
     }
@@ -194,7 +195,7 @@ export class Snowman {
     const hatColor = 0x2c3e50;
     let ribbonColor;
     if (this.isAI) {
-      ribbonColor = 0x8B6914;
+      ribbonColor = this.isAllyAI ? 0x1a4d8c : 0x8B6914;
     } else {
       ribbonColor = this.team === 'blue' ? 0x4a90d9 : 0xd94a4a;
     }
@@ -269,9 +270,10 @@ export class Snowman {
     this.indicatorGroup.position.y = 4.0;
     
     if (isAI) {
+      const cubeColor = this.isAllyAI ? 0x1a4d8c : 0x8B6914;
       const cubeGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
       const cubeMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8B6914,
+        color: cubeColor,
         roughness: 0.7,
         metalness: 0.1
       });

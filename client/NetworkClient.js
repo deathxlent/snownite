@@ -6,6 +6,9 @@ export class NetworkClient {
     this.playerId = null;
     this.playerName = 'Player';
     this.playerTeam = 'blue';
+    this.spawnX = 0;
+    this.spawnZ = 0;
+    this.spawnYaw = 0;
     this.isConnected = false;
     
     this.onPlayerJoin = null;
@@ -62,6 +65,13 @@ export class NetworkClient {
         this.isConnected = true;
         this.playerId = data.playerId;
         this.playerTeam = data.team || 'blue';
+        const existingPlayers = data.players || [];
+        const myData = existingPlayers.find(p => p.id === data.playerId);
+        if (myData) {
+          this.spawnX = myData.x || 0;
+          this.spawnZ = myData.z || 0;
+          this.spawnYaw = myData.yaw || 0;
+        }
         if (this._originalOnWelcome) {
           this._originalOnWelcome(data);
         }
