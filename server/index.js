@@ -35,6 +35,7 @@ function getPlayersList() {
     list.push({
       id,
       name: player.name,
+      team: player.team,
       x: player.x,
       z: player.z,
       yaw: player.yaw
@@ -43,13 +44,26 @@ function getPlayersList() {
   return list;
 }
 
+function assignTeam() {
+  let blueCount = 0;
+  let redCount = 0;
+  for (const player of players.values()) {
+    if (player.team === 'blue') blueCount++;
+    else if (player.team === 'red') redCount++;
+  }
+  return blueCount <= redCount ? 'blue' : 'red';
+}
+
 wss.on('connection', (ws) => {
   const playerId = generateId();
   console.log(`🆕 新玩家连接: ${playerId}`);
   
+  const team = assignTeam();
+  
   const playerData = {
     id: playerId,
     name: 'Unknown',
+    team: team,
     x: 0,
     z: 0,
     yaw: 0,
@@ -62,6 +76,7 @@ wss.on('connection', (ws) => {
     type: MESSAGE_TYPES.WELCOME,
     data: {
       playerId: playerId,
+      team: team,
       players: getPlayersList()
     }
   });
@@ -71,6 +86,7 @@ wss.on('connection', (ws) => {
     data: {
       id: playerId,
       name: playerData.name,
+      team: playerData.team,
       x: playerData.x,
       z: playerData.z,
       yaw: playerData.yaw

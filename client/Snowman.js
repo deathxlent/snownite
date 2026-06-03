@@ -158,7 +158,12 @@ export class Snowman {
   }
   
   _createScarf() {
-    const scarfColor = this.team === 'blue' ? 0x4a90d9 : 0xd94a4a;
+    let scarfColor;
+    if (this.isAI) {
+      scarfColor = 0x8B6914;
+    } else {
+      scarfColor = this.team === 'blue' ? 0x4a90d9 : 0xd94a4a;
+    }
     
     const scarfGeometry = new THREE.TorusGeometry(0.45, 0.08, 16, 32);
     const scarfMaterial = new THREE.MeshStandardMaterial({
@@ -186,8 +191,13 @@ export class Snowman {
     const hatBrimGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.05, 32);
     const hatTopGeometry = new THREE.CylinderGeometry(0.28, 0.28, 0.45, 32);
     
-    const hatColor = this.team === 'blue' ? 0x2c3e50 : 0x2c3e50;
-    const ribbonColor = this.team === 'blue' ? 0x4a90d9 : 0xd94a4a;
+    const hatColor = 0x2c3e50;
+    let ribbonColor;
+    if (this.isAI) {
+      ribbonColor = 0x8B6914;
+    } else {
+      ribbonColor = this.team === 'blue' ? 0x4a90d9 : 0xd94a4a;
+    }
     
     const hatMaterial = new THREE.MeshStandardMaterial({
       color: hatColor,
@@ -277,11 +287,10 @@ export class Snowman {
       
       const triGeometry = new THREE.ShapeGeometry(shape);
       const triMaterial = new THREE.MeshBasicMaterial({
-        color: 0x4a90d9,
+        color: 0x8ab4f8,
         side: THREE.DoubleSide
       });
       const triangle = new THREE.Mesh(triGeometry, triMaterial);
-      triangle.rotation.x = Math.PI;
       triangle.position.y = 0.2;
       this.indicatorGroup.add(triangle);
       
@@ -290,7 +299,9 @@ export class Snowman {
         canvas.width = 256;
         canvas.height = 64;
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = 'rgba(74, 144, 217, 0.9)';
+        ctx.fillStyle = 'rgba(138, 180, 248, 0.95)';
+        ctx.fillRect(0, 0, 256, 64);
+        ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 32px Microsoft YaHei, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -317,7 +328,7 @@ export class Snowman {
     this.collider.z = this.group.position.z;
     
     if (this.indicatorGroup) {
-      this.indicatorGroup.rotation.y = -this.yaw;
+      this.indicatorGroup.rotation.y = this.yaw;
     }
     
     if (this.isHit) {

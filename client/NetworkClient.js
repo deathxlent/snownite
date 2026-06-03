@@ -5,6 +5,7 @@ export class NetworkClient {
     this.ws = null;
     this.playerId = null;
     this.playerName = 'Player';
+    this.playerTeam = 'blue';
     this.isConnected = false;
     
     this.onPlayerJoin = null;
@@ -60,6 +61,7 @@ export class NetworkClient {
         clearTimeout(timeout);
         this.isConnected = true;
         this.playerId = data.playerId;
+        this.playerTeam = data.team || 'blue';
         if (this._originalOnWelcome) {
           this._originalOnWelcome(data);
         }
