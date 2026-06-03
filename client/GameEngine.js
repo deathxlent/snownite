@@ -6,12 +6,14 @@ import { Snowman } from './Snowman.js';
 import { ThirdPersonCamera } from './ThirdPersonCamera.js';
 import { SnowballManager } from './SnowballManager.js';
 import { SnowballThrower } from './SnowballThrower.js';
+import { SnowballProjectile } from './SnowballProjectile.js';
 
 export class GameEngine {
-  constructor(canvas, isNetworked = false, networkClient = null) {
+  constructor(canvas, isNetworked = false, networkClient = null, playerName = '') {
     this.canvas = canvas;
     this.isNetworked = isNetworked;
     this.networkClient = networkClient;
+    this.playerName = playerName;
     
     this.scene = null;
     this.camera = null;
@@ -28,6 +30,7 @@ export class GameEngine {
     
     this.stamina = 1.0;
     this.isSprinting = false;
+    this.isGathering = false;
     
     this.snowballManager = null;
     this.snowballThrower = null;
@@ -66,7 +69,7 @@ export class GameEngine {
     this.snowballManager = new SnowballManager(this.mapGenerator.gridGround);
     this.snowballThrower = new SnowballThrower(this.scene, this.mapGenerator.gridGround);
     
-    this.localPlayer = new Snowman(this.scene, true, 'blue');
+    this.localPlayer = new Snowman(this.scene, true, 'blue', true, this.playerName);
     this.localPlayer.setPosition(0, 0, 0);
     this.localPlayer.setRotation(0);
     
@@ -76,9 +79,7 @@ export class GameEngine {
     this.thirdPersonCamera.update(0.016);
     this.camera.position.copy(this.camera.position);
     
-    if (!this.isNetworked) {
-      this._createAIPlayers();
-    }
+    this._createAIPlayers();
     
     this.snowballThrower.addCollider(this.localPlayer.collider);
     
@@ -135,25 +136,35 @@ export class GameEngine {
   _createAIPlayers() {
     const aiCount = 5;
     const spawnRadius = 15;
+    const isAlly = this.isNetworked;
     
     for (let i = 0; i < aiCount; i++) {
       const angle = (i / aiCount) * Math.PI * 2;
       const x = Math.cos(angle) * spawnRadius;
       const z = Math.sin(angle) * spawnRadius;
       
-      const snowman = new Snowman(this.scene, false, 'red');
+      const team = isAlly ? 'blue' : 'red';
+      const snowman = new Snowman(this.scene, false, team, false, '', true);
       snowman.setPosition(x, 0, z);
       snowman.setRotation(angle + Math.PI);
       
       const aiData = {
         snowman,
+        team,
         targetYaw: angle + Math.PI,
         moveTimer: 0,
         moveDirection: new THREE.Vector2(
           (Math.random() - 0.5) * 2,
           (Math.random() - 0.5) * 2
         ).normalize(),
-        state: 'patrol'
+        state: 'patrol',
+        snowballCount: 0,
+        maxSnowballs: 5,
+        gatherTimer: 0,
+        gatherDuration: 2.0,
+        isGathering: false,
+        throwCooldown: 0,
+        gatherCooldown: 0
       };
       
       this.aiPlayers.push(aiData);
@@ -164,14 +175,67 @@ export class GameEngine {
   }
   
   _updateAI(deltaTime) {
-    const playerPos = this.localPlayer.getPosition();
-    
     for (const ai of this.aiPlayers) {
+      if (ai.throwCooldown > 0) ai.throwCooldown -= deltaTime;
+      if (ai.gatherCooldown > 0) ai.gatherCooldown -= deltaTime;
+      
+      if (ai.isGathering) {
+        ai.gatherTimer += deltaTime;
+        if (ai.gatherTimer >= ai.gatherDuration) {
+          ai.isGathering = false;
+          ai.gatherTimer = 0;
+          if (ai.snowballCount < ai.maxSnowballs) {
+            ai.snowballCount++;
+          }
+          ai.gatherCooldown = 0.5 + Math.random() * 1.5;
+        }
+        ai.snowman.update(deltaTime);
+        continue;
+      }
+      
+      if (ai.gatherCooldown <= 0 && ai.snowballCount < ai.maxSnowballs && Math.random() < 0.01) {
+        ai.isGathering = true;
+        ai.gatherTimer = 0;
+        ai.snowman.update(deltaTime);
+        continue;
+      }
+      
+      if (ai.snowballCount > 0 && ai.throwCooldown <= 0 && Math.random() < 0.008) {
+        const aiPos = ai.snowman.getPosition();
+        const aiYaw = ai.snowman.getRotation();
+        const startPos = new THREE.Vector3(
+          aiPos.x + Math.sin(aiYaw) * 0.5,
+          1.8,
+          aiPos.z + Math.cos(aiYaw) * 0.5
+        );
+        
+        const defaultPitch = Math.PI / 4.5;
+        const speed = GAME_CONFIG.THROW_SPEED;
+        const velocity = new THREE.Vector3(
+          Math.sin(aiYaw) * Math.cos(defaultPitch) * speed,
+          Math.sin(defaultPitch) * speed,
+          Math.cos(aiYaw) * Math.cos(defaultPitch) * speed
+        );
+        
+        const projectile = new SnowballProjectile(
+          this.scene,
+          startPos,
+          velocity,
+          false,
+          (collider) => this._onAIHit(collider, ai),
+          (x, z) => this._onAIGroundHit(x, z)
+        );
+        this.snowballThrower.projectiles.push(projectile);
+        ai.snowballCount--;
+        ai.throwCooldown = 1.0 + Math.random() * 2.0;
+      }
+      
       ai.moveTimer -= deltaTime;
       
       if (ai.moveTimer <= 0) {
         ai.moveTimer = 2 + Math.random() * 3;
         
+        const playerPos = this.localPlayer.getPosition();
         const toPlayer = new THREE.Vector2(
           playerPos.x - ai.snowman.getPosition().x,
           playerPos.z - ai.snowman.getPosition().z
@@ -179,7 +243,7 @@ export class GameEngine {
         
         const dist = toPlayer.length();
         
-        if (dist < 12 && Math.random() > 0.3) {
+        if (ai.team === 'red' && dist < 12 && Math.random() > 0.3) {
           toPlayer.normalize();
           ai.moveDirection.copy(toPlayer);
           ai.targetYaw = Math.atan2(toPlayer.x, toPlayer.y);
@@ -230,6 +294,21 @@ export class GameEngine {
     }
   }
   
+  _onAIHit(collider, ai) {
+    if (collider.snowman) {
+      collider.snowman.hit();
+    }
+  }
+  
+  _onAIGroundHit(x, z) {
+    if (this.snowballThrower.gridGround) {
+      const gridGround = this.snowballThrower.gridGround;
+      const currentSU = gridGround.getSU(x, z);
+      const newSU = Math.min(GAME_CONFIG.MAX_SNOW_UNIT, currentSU + GAME_CONFIG.THROW_SNOW_GROUND_BONUS);
+      gridGround.setSU(x, z, newSU);
+    }
+  }
+  
   start() {
     if (this.isRunning) return;
     
@@ -277,6 +356,7 @@ export class GameEngine {
     const playerPitch = this.thirdPersonCamera.getPitch();
     
     this.snowballManager.setHoldActive(wantGather);
+    this.isGathering = this.snowballManager.isGathering || (wantGather && this.snowballManager.snowballCount < this.snowballManager.maxSnowballs);
     
     this.snowballManager.update(deltaTime, playerPos.x, playerPos.z, playerYaw);
     this.snowballManager.updateGatherUI();
@@ -314,8 +394,10 @@ export class GameEngine {
     );
     
     const moveDirection = new THREE.Vector2();
-    moveDirection.add(forward.clone().multiplyScalar(movement.forward - movement.backward));
-    moveDirection.add(right.clone().multiplyScalar(movement.left - movement.right));
+    if (!this.isGathering) {
+      moveDirection.add(forward.clone().multiplyScalar(movement.forward - movement.backward));
+      moveDirection.add(right.clone().multiplyScalar(movement.left - movement.right));
+    }
     
     const isMoving = moveDirection.length() > 0;
     
@@ -361,9 +443,7 @@ export class GameEngine {
     
     this.thirdPersonCamera.update(deltaTime);
     
-    if (!this.isNetworked) {
-      this._updateAI(deltaTime);
-    }
+    this._updateAI(deltaTime);
     
     if (this.isNetworked && this.networkClient) {
       const now = Date.now();
@@ -385,7 +465,7 @@ export class GameEngine {
   _onPlayerJoin(playerData) {
     if (playerData.id === this.networkClient.playerId) return;
     
-    const snowman = new Snowman(this.scene, false, 'red');
+    const snowman = new Snowman(this.scene, false, 'red', false, '', false);
     snowman.setPosition(playerData.x || 0, 0, playerData.z || 0);
     snowman.setRotation(playerData.yaw || 0);
     
@@ -413,7 +493,7 @@ export class GameEngine {
       let player = this.remotePlayers.get(playerData.id);
       if (!player) {
         player = {
-          snowman: new Snowman(this.scene, false, 'red'),
+          snowman: new Snowman(this.scene, false, 'red', false, '', false),
           data: playerData
         };
         this.remotePlayers.set(playerData.id, player);

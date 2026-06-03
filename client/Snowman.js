@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { COLORS } from '../shared/constants.js';
 
 export class Snowman {
-  constructor(scene, isLocalPlayer = false, team = 'blue') {
+  constructor(scene, isLocalPlayer = false, team = 'blue', showNameLabel = false, playerName = '', isAI = false) {
     this.scene = scene;
     this.isLocalPlayer = isLocalPlayer;
     this.team = team;
+    this.isAI = isAI;
     this.group = new THREE.Group();
     this.yaw = 0;
     this.pitch = 0;
@@ -19,6 +20,7 @@ export class Snowman {
     this._createArms();
     this._createScarf();
     this._createHat();
+    this._createIndicator(showNameLabel, playerName, isAI);
     
     scene.add(this.group);
     
@@ -252,9 +254,71 @@ export class Snowman {
     });
   }
   
+  _createIndicator(showNameLabel, playerName, isAI) {
+    this.indicatorGroup = new THREE.Group();
+    this.indicatorGroup.position.y = 4.0;
+    
+    if (isAI) {
+      const cubeGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+      const cubeMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8B6914,
+        roughness: 0.7,
+        metalness: 0.1
+      });
+      const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+      cube.position.y = 0.15;
+      this.indicatorGroup.add(cube);
+    } else if (showNameLabel) {
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0.35);
+      shape.lineTo(-0.2, -0.05);
+      shape.lineTo(0.2, -0.05);
+      shape.lineTo(0, 0.35);
+      
+      const triGeometry = new THREE.ShapeGeometry(shape);
+      const triMaterial = new THREE.MeshBasicMaterial({
+        color: 0x4a90d9,
+        side: THREE.DoubleSide
+      });
+      const triangle = new THREE.Mesh(triGeometry, triMaterial);
+      triangle.rotation.x = Math.PI;
+      triangle.position.y = 0.2;
+      this.indicatorGroup.add(triangle);
+      
+      if (playerName) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(74, 144, 217, 0.9)';
+        ctx.font = 'bold 32px Microsoft YaHei, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(playerName, 128, 32);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const labelGeometry = new THREE.PlaneGeometry(1.6, 0.4);
+        const labelMaterial = new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          side: THREE.DoubleSide
+        });
+        const label = new THREE.Mesh(labelGeometry, labelMaterial);
+        label.position.y = -0.2;
+        this.indicatorGroup.add(label);
+      }
+    }
+    
+    this.group.add(this.indicatorGroup);
+  }
+  
   update(deltaTime) {
     this.collider.x = this.group.position.x;
     this.collider.z = this.group.position.z;
+    
+    if (this.indicatorGroup) {
+      this.indicatorGroup.rotation.y = -this.yaw;
+    }
     
     if (this.isHit) {
       this.hitTimer -= deltaTime;

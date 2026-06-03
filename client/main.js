@@ -18,7 +18,7 @@ function startSinglePlayer() {
     gameUI.classList.add('active');
     
     try {
-      gameEngine = new GameEngine(canvas, false, null);
+      gameEngine = new GameEngine(canvas, false, null, '');
       gameEngine.start();
     } catch (error) {
       console.error('Game init error:', error);
@@ -33,6 +33,14 @@ function startSinglePlayer() {
 function showConnectMenu() {
   mainMenu.classList.add('hidden');
   connectMenu.style.display = 'flex';
+  
+  const serverInput = document.getElementById('server-address');
+  if (serverInput && serverInput.value === 'ws://localhost:8765') {
+    const currentHost = window.location.hostname;
+    if (currentHost && currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
+      serverInput.value = `ws://${currentHost}:8765`;
+    }
+  }
 }
 
 function backToMainMenu() {
@@ -41,11 +49,16 @@ function backToMainMenu() {
 }
 
 async function connectToServer() {
-  const serverAddress = document.getElementById('server-address').value;
-  const playerName = document.getElementById('player-name').value;
+  const serverAddress = document.getElementById('server-address').value.trim();
+  const playerName = document.getElementById('player-name').value.trim();
   
-  if (!serverAddress || !playerName) {
-    alert('请填写服务器地址和玩家名称');
+  if (!serverAddress) {
+    alert('请填写服务器地址');
+    return;
+  }
+  
+  if (!playerName) {
+    alert('请输入你的名字');
     return;
   }
   
@@ -58,7 +71,7 @@ async function connectToServer() {
     hideAllMenus();
     gameUI.classList.add('active');
     
-    gameEngine = new GameEngine(canvas, true, networkClient);
+    gameEngine = new GameEngine(canvas, true, networkClient, playerName);
     gameEngine.start();
     
   } catch (error) {
