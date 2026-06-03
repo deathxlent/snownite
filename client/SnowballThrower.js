@@ -35,7 +35,6 @@ export class SnowballThrower {
     });
     
     this.trajectoryLine = new THREE.Line(geometry, material);
-    this.trajectoryLine.computeLineDistances();
     this.trajectoryLine.visible = false;
     this.scene.add(this.trajectoryLine);
     
@@ -102,7 +101,7 @@ export class SnowballThrower {
   throw(playerPos, yaw, pitch, isCharged, snowballManager) {
     if (snowballManager.snowballCount <= 0) return false;
     
-    snowballManager.decrement();
+    snowballManager.useSnowball();
     
     const startPos = this._getThrowStartPosition(playerPos, yaw);
     const velocity = this._getThrowVelocity(yaw, pitch, isCharged);
