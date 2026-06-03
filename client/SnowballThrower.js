@@ -80,17 +80,19 @@ export class SnowballThrower {
   
   _getThrowVelocity(yaw, pitch, isCharged) {
     const speed = isCharged ? this.baseSpeed * this.chargedMultiplier : this.baseSpeed;
+    const defaultPitch = Math.PI / 4.5;
+    const combinedPitch = pitch + defaultPitch;
     const forward = new THREE.Vector3(
-      -Math.sin(yaw),
-      Math.sin(pitch),
-      -Math.cos(yaw)
+      Math.sin(yaw) * Math.cos(combinedPitch),
+      Math.sin(combinedPitch),
+      Math.cos(yaw) * Math.cos(combinedPitch)
     ).normalize();
     
     return forward.multiplyScalar(speed);
   }
   
   _getThrowStartPosition(playerPos, yaw) {
-    const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+    const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
     return new THREE.Vector3(
       playerPos.x + forward.x * 0.5,
       1.8,
@@ -99,9 +101,7 @@ export class SnowballThrower {
   }
   
   throw(playerPos, yaw, pitch, isCharged, snowballManager) {
-    if (snowballManager.snowballCount <= 0) return false;
-    
-    snowballManager.useSnowball();
+    if (!snowballManager.useSnowball()) return false;
     
     const startPos = this._getThrowStartPosition(playerPos, yaw);
     const velocity = this._getThrowVelocity(yaw, pitch, isCharged);

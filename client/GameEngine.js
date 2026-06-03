@@ -281,20 +281,20 @@ export class GameEngine {
     this.snowballManager.update(deltaTime, playerPos.x, playerPos.z, playerYaw);
     this.snowballManager.updateGatherUI();
     
-    if (!wantGather && this.snowballManager.snowballCount > 0) {
-      this.snowballThrower.update(
-        deltaTime,
-        playerPos,
-        playerYaw,
-        playerPitch,
-        wantThrow,
-        chargeTime,
-        this.snowballManager
-      );
-    } else {
-      if (wantThrow) {
-        this.inputSystem.resetThrowCharge();
-      }
+    const canThrow = !wantGather && this.snowballManager.snowballCount > 0;
+    
+    this.snowballThrower.update(
+      deltaTime,
+      playerPos,
+      playerYaw,
+      playerPitch,
+      canThrow ? wantThrow : false,
+      chargeTime,
+      this.snowballManager
+    );
+    
+    if (!canThrow && wantThrow) {
+      this.inputSystem.resetThrowCharge();
     }
     
     this.thirdPersonCamera.updateLookInput(look.yaw, look.pitch);
