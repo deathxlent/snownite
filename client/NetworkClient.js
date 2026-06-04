@@ -68,6 +68,13 @@ export class NetworkClient {
         this.playerSpawnX = data.spawnX || 0;
         this.playerSpawnZ = data.spawnZ || 0;
         this.playerSpawnYaw = data.spawnYaw || 0;
+        
+        this.sendPlayerUpdate({
+          x: this.playerSpawnX,
+          z: this.playerSpawnZ,
+          yaw: this.playerSpawnYaw
+        });
+        
         if (this._originalOnWelcome) {
           this._originalOnWelcome(data);
         }

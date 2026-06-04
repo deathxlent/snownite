@@ -48,9 +48,20 @@ function backToMainMenu() {
   mainMenu.classList.remove('hidden');
 }
 
+function truncateName(name, maxChars = 8) {
+  let count = 0;
+  let result = '';
+  for (const char of name) {
+    if (count >= maxChars) break;
+    result += char;
+    count++;
+  }
+  return result;
+}
+
 async function connectToServer() {
   const serverAddress = document.getElementById('server-address').value.trim();
-  const playerName = document.getElementById('player-name').value.trim();
+  let playerName = document.getElementById('player-name').value.trim();
   
   if (!serverAddress) {
     alert('请填写服务器地址');
@@ -61,6 +72,8 @@ async function connectToServer() {
     alert('请输入你的名字');
     return;
   }
+  
+  playerName = truncateName(playerName, 8);
   
   showLoading();
   

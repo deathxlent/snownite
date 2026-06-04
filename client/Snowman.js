@@ -302,19 +302,19 @@ export class Snowman {
       
       if (playerName) {
         const canvas = document.createElement('canvas');
-        canvas.width = 256;
+        canvas.width = 512;
         canvas.height = 64;
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = 'rgba(138, 180, 248, 0.95)';
-        ctx.fillRect(0, 0, 256, 64);
+        ctx.fillRect(0, 0, 512, 64);
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 32px Microsoft YaHei, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(playerName, 128, 32);
+        ctx.fillText(playerName, 256, 32);
         
         const texture = new THREE.CanvasTexture(canvas);
-        const labelGeometry = new THREE.PlaneGeometry(1.6, 0.4);
+        const labelGeometry = new THREE.PlaneGeometry(3.2, 0.4);
         const labelMaterial = new THREE.MeshBasicMaterial({
           map: texture,
           transparent: true,
@@ -333,8 +333,10 @@ export class Snowman {
     this.collider.x = this.group.position.x;
     this.collider.z = this.group.position.z;
     
-    if (this.indicatorGroup && this.camera && !this.isAI) {
-      this.indicatorGroup.quaternion.copy(this.camera.quaternion);
+    if (this.indicatorGroup && this.camera) {
+      const cameraWorldPos = new THREE.Vector3();
+      this.camera.getWorldPosition(cameraWorldPos);
+      this.indicatorGroup.lookAt(cameraWorldPos);
     }
     
     if (this.isHit) {

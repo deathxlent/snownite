@@ -146,10 +146,25 @@ function handleMessage(playerId, message) {
   switch (message.type) {
     case MESSAGE_TYPES.PLAYER_MOVE:
       if (message.data) {
+        const nameChanged = message.data.name && message.data.name !== player.name;
         if (message.data.name) player.name = message.data.name;
         if (message.data.x !== undefined) player.x = message.data.x;
         if (message.data.z !== undefined) player.z = message.data.z;
         if (message.data.yaw !== undefined) player.yaw = message.data.yaw;
+        
+        if (nameChanged) {
+          broadcast({
+            type: MESSAGE_TYPES.PLAYER_JOIN,
+            data: {
+              id: playerId,
+              name: player.name,
+              team: player.team,
+              x: player.x,
+              z: player.z,
+              yaw: player.yaw
+            }
+          });
+        }
       }
       break;
   }
