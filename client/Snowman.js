@@ -25,7 +25,7 @@ export class Snowman {
 
     this.knockbackActive = false;
     this.knockbackVelocity = new THREE.Vector3(0, 0, 0);
-    this.knockbackDecay = 3;
+    this.knockbackDecay = 6;
     this.knockbackMinSpeed = 0.5;
 
     this.bodyMeshes = [];
@@ -326,7 +326,7 @@ export class Snowman {
   }
 
   applyKnockback(directionX, directionZ, distance) {
-    const initialSpeed = 12;
+    const initialSpeed = 18;
     this.knockbackVelocity.set(directionX * initialSpeed, 0, directionZ * initialSpeed);
     this.knockbackActive = true;
   }
