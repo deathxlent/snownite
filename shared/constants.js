@@ -1,3 +1,13 @@
+export const MAP_OBSTACLES = {
+  houses: [
+    { x: -20, z: -20, radius: 2.5 },
+    { x: 20, z: -20, radius: 2.5 },
+    { x: -20, z: 20, radius: 2.0 },
+    { x: 25, z: 15, radius: 2.0 }
+  ],
+  trees: []
+};
+
 export const GAME_CONFIG = {
   WORLD_SIZE: 100,
   PLAYER_SPEED: 8,

@@ -273,7 +273,6 @@ export class Snowman {
   _createIndicator(showNameLabel, playerName, isAI) {
     this.indicatorGroup = new THREE.Group();
     this.indicatorGroup.position.y = 4.0;
-    this.indicatorGroup.scale.z = -1;
     
     const isTeammate = this.team === this.localTeam;
     const shouldShowName = this.isLocalPlayer || isTeammate;
@@ -331,12 +330,21 @@ export class Snowman {
       }
     }
     
-    this.group.add(this.indicatorGroup);
+    this.scene.add(this.indicatorGroup);
   }
   
   update(deltaTime) {
     this.collider.x = this.group.position.x;
     this.collider.z = this.group.position.z;
+    
+    if (this.indicatorGroup) {
+      this.indicatorGroup.position.x = this.group.position.x;
+      this.indicatorGroup.position.z = this.group.position.z;
+      
+      if (this.camera) {
+        this.indicatorGroup.lookAt(this.camera.position);
+      }
+    }
     
     if (this.isHit) {
       this.hitTimer -= deltaTime;
@@ -395,6 +403,9 @@ export class Snowman {
   }
   
   remove() {
+    if (this.indicatorGroup) {
+      this.scene.remove(this.indicatorGroup);
+    }
     this.scene.remove(this.group);
   }
 }

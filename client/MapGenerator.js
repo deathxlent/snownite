@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COLORS, GAME_CONFIG } from '../shared/constants.js';
+import { COLORS, GAME_CONFIG, MAP_OBSTACLES } from '../shared/constants.js';
 import { GridGround } from './GridGround.js';
 
 export class MapGenerator {
@@ -7,22 +7,76 @@ export class MapGenerator {
     this.scene = scene;
     this.colliders = [];
     this.gridGround = new GridGround(scene);
+    this._generateTreePositions();
     this._createSnowHouses();
     this._createTrees();
     this._createLighting();
     this._createFog();
   }
   
-  _createSnowHouses() {
-    const housePositions = [
-      { x: -20, z: -20 },
-      { x: 20, z: -20 },
-      { x: -20, z: 20 },
-      { x: 25, z: 15 }
-    ];
+  _seededRandom(seed) {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+  }
+  
+  _generateTreePositions() {
+    if (MAP_OBSTACLES.trees.length > 0) return;
     
-    housePositions.forEach((pos, index) => {
-      this._createSnowHouse(pos.x, pos.z, index % 2 === 0 ? 1 : 0.8);
+    const trees = [];
+    const treeCount = 30;
+    const worldSize = GAME_CONFIG.WORLD_SIZE * 0.8;
+    
+    let seed = 12345;
+    for (let i = 0; i < treeCount; i++) {
+      let x, z;
+      let valid = true;
+      let attempts = 0;
+      
+      do {
+        seed++;
+        x = (this._seededRandom(seed) - 0.5) * worldSize;
+        seed++;
+        z = (this._seededRandom(seed) - 0.5) * worldSize;
+        
+        valid = true;
+        attempts++;
+        
+        for (const pos of trees) {
+          const dist = Math.sqrt((x - pos.x) ** 2 + (z - pos.z) ** 2);
+          if (dist < 5) {
+            valid = false;
+            break;
+          }
+        }
+        
+        if (valid) {
+          for (const house of MAP_OBSTACLES.houses) {
+            const dist = Math.sqrt((x - house.x) ** 2 + (z - house.z) ** 2);
+            if (dist < house.radius + 3) {
+              valid = false;
+              break;
+            }
+          }
+        }
+        
+        if (valid) {
+          const centerDist = Math.sqrt(x * x + z * z);
+          if (centerDist < 8) valid = false;
+        }
+        
+      } while (!valid && attempts < 100);
+      
+      seed++;
+      const scale = 0.7 + this._seededRandom(seed) * 0.6;
+      trees.push({ x, z, radius: 1.2 * scale, scale });
+    }
+    
+    MAP_OBSTACLES.trees = trees;
+  }
+  
+  _createSnowHouses() {
+    MAP_OBSTACLES.houses.forEach((house, index) => {
+      this._createSnowHouse(house.x, house.z, index % 2 === 0 ? 1 : 0.8);
     });
   }
   
@@ -102,41 +156,9 @@ export class MapGenerator {
   }
   
   _createTrees() {
-    const treePositions = [];
-    
-    for (let i = 0; i < 30; i++) {
-      let x, z;
-      let valid = true;
-      
-      do {
-        x = (Math.random() - 0.5) * GAME_CONFIG.WORLD_SIZE * 0.8;
-        z = (Math.random() - 0.5) * GAME_CONFIG.WORLD_SIZE * 0.8;
-        
-        valid = true;
-        for (const pos of treePositions) {
-          const dist = Math.sqrt((x - pos.x) ** 2 + (z - pos.z) ** 2);
-          if (dist < 5) {
-            valid = false;
-            break;
-          }
-        }
-        
-        for (const collider of this.colliders) {
-          const dist = Math.sqrt((x - collider.x) ** 2 + (z - collider.z) ** 2);
-          if (dist < collider.radius + 3) {
-            valid = false;
-            break;
-          }
-        }
-        
-        const centerDist = Math.sqrt(x * x + z * z);
-        if (centerDist < 8) valid = false;
-        
-      } while (!valid);
-      
-      treePositions.push({ x, z });
-      this._createTree(x, z, 0.7 + Math.random() * 0.6);
-    }
+    MAP_OBSTACLES.trees.forEach(tree => {
+      this._createTree(tree.x, tree.z, tree.scale || 1);
+    });
   }
   
   _createTree(x, z, scale = 1) {

@@ -1,5 +1,5 @@
 import { WebSocketServer } from 'ws';
-import { GAME_CONFIG, MESSAGE_TYPES } from '../shared/constants.js';
+import { GAME_CONFIG, MESSAGE_TYPES, MAP_OBSTACLES } from '../shared/constants.js';
 
 const wss = new WebSocketServer({ port: GAME_CONFIG.SERVER_PORT });
 
@@ -54,6 +54,30 @@ function assignTeam() {
   return blueCount <= redCount ? 'blue' : 'red';
 }
 
+function checkMapCollision(x, z, radius) {
+  const halfWorld = GAME_CONFIG.WORLD_SIZE / 2;
+  if (x < -halfWorld + radius || x > halfWorld - radius ||
+      z < -halfWorld + radius || z > halfWorld - radius) {
+    return true;
+  }
+  
+  for (const house of MAP_OBSTACLES.houses) {
+    const dist = Math.sqrt((x - house.x) ** 2 + (z - house.z) ** 2);
+    if (dist < house.radius + radius) {
+      return true;
+    }
+  }
+  
+  for (const tree of MAP_OBSTACLES.trees) {
+    const dist = Math.sqrt((x - tree.x) ** 2 + (z - tree.z) ** 2);
+    if (dist < tree.radius + radius) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 function checkSpawnCollision(x, z, excludeId = null) {
   const minDistance = 3;
   for (const [id, player] of players) {
@@ -66,6 +90,66 @@ function checkSpawnCollision(x, z, excludeId = null) {
   }
   return false;
 }
+
+function generateTreePositions() {
+  const trees = [];
+  const treeCount = 30;
+  const worldSize = GAME_CONFIG.WORLD_SIZE * 0.8;
+  
+  const seededRandom = (seed) => {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+  };
+  
+  let seed = 12345;
+  for (let i = 0; i < treeCount; i++) {
+    let x, z;
+    let valid = true;
+    let attempts = 0;
+    
+    do {
+      seed++;
+      x = (seededRandom(seed) - 0.5) * worldSize;
+      seed++;
+      z = (seededRandom(seed) - 0.5) * worldSize;
+      
+      valid = true;
+      attempts++;
+      
+      for (const pos of trees) {
+        const dist = Math.sqrt((x - pos.x) ** 2 + (z - pos.z) ** 2);
+        if (dist < 5) {
+          valid = false;
+          break;
+        }
+      }
+      
+      if (valid) {
+        for (const house of MAP_OBSTACLES.houses) {
+          const dist = Math.sqrt((x - house.x) ** 2 + (z - house.z) ** 2);
+          if (dist < house.radius + 3) {
+            valid = false;
+            break;
+          }
+        }
+      }
+      
+      if (valid) {
+        const centerDist = Math.sqrt(x * x + z * z);
+        if (centerDist < 8) valid = false;
+      }
+      
+    } while (!valid && attempts < 100);
+    
+    seed++;
+    const scale = 0.7 + seededRandom(seed) * 0.6;
+    trees.push({ x, z, radius: 1.2 * scale });
+  }
+  
+  return trees;
+}
+
+MAP_OBSTACLES.trees = generateTreePositions();
 
 function assignSpawnPosition(team) {
   const spawnDistance = 25;
@@ -81,7 +165,8 @@ function assignSpawnPosition(team) {
       baseZ = (Math.random() - 0.5) * 15;
     }
     
-    if (!checkSpawnCollision(baseX, baseZ)) {
+    if (!checkSpawnCollision(baseX, baseZ) && 
+        !checkMapCollision(baseX, baseZ, GAME_CONFIG.PLAYER_RADIUS * 2)) {
       return {
         x: baseX,
         z: baseZ,
