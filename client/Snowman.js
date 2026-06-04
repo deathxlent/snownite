@@ -334,10 +334,16 @@ export class Snowman {
     this.collider.z = this.group.position.z;
     
     if (this.indicatorGroup && this.camera) {
-      this.indicatorGroup.quaternion.copy(this.camera.quaternion);
-      const flipQuat = new THREE.Quaternion();
-      flipQuat.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
-      this.indicatorGroup.quaternion.multiply(flipQuat);
+      const indicatorWorldPos = new THREE.Vector3();
+      this.indicatorGroup.getWorldPosition(indicatorWorldPos);
+      
+      const cameraWorldPos = new THREE.Vector3();
+      this.camera.getWorldPosition(cameraWorldPos);
+      
+      const targetPos = new THREE.Vector3().subVectors(indicatorWorldPos, cameraWorldPos);
+      targetPos.add(indicatorWorldPos);
+      
+      this.indicatorGroup.lookAt(targetPos);
     }
     
     if (this.isHit) {

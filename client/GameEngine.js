@@ -145,27 +145,73 @@ export class GameEngine {
     return false;
   }
   
+  _checkAISpawnCollision(x, z, existingAIs) {
+    const minDistance = 3;
+    for (const ai of existingAIs) {
+      const pos = ai.snowman.getPosition();
+      const dx = x - pos.x;
+      const dz = z - pos.z;
+      if (dx * dx + dz * dz < minDistance * minDistance) {
+        return true;
+      }
+    }
+    
+    if (this.localPlayer) {
+      const playerPos = this.localPlayer.getPosition();
+      const dx = x - playerPos.x;
+      const dz = z - playerPos.z;
+      if (dx * dx + dz * dz < minDistance * minDistance) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  _getAISpawnPosition(team, existingAIs) {
+    const spawnDistance = 25;
+    const maxAttempts = 50;
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      let x, z;
+      if (team === 'blue') {
+        x = -spawnDistance + (Math.random() - 0.5) * 10;
+        z = (Math.random() - 0.5) * 15;
+      } else {
+        x = spawnDistance + (Math.random() - 0.5) * 10;
+        z = (Math.random() - 0.5) * 15;
+      }
+      
+      if (!this._checkAISpawnCollision(x, z, existingAIs) &&
+          !this.mapGenerator.checkCollision(x, z, GAME_CONFIG.PLAYER_RADIUS)) {
+        return { x, z };
+      }
+    }
+    
+    const angle = team === 'blue' ? 0 : Math.PI;
+    return {
+      x: Math.cos(angle) * spawnDistance,
+      z: Math.sin(angle) * spawnDistance
+    };
+  }
+  
   _createAIPlayers() {
     const aiCountPerTeam = 5;
-    const spawnRadius = 15;
     
     const teams = ['blue', 'red'];
-    const aiDataList = [];
     
     for (let teamIndex = 0; teamIndex < 2; teamIndex++) {
       const team = teams[teamIndex];
       const teamIsLocal = team === this.localTeam;
       
       for (let i = 0; i < aiCountPerTeam; i++) {
-        const baseAngle = (teamIndex * Math.PI) + (i / aiCountPerTeam) * Math.PI;
-        const angle = baseAngle + Math.PI / 10;
-        const x = Math.cos(angle) * spawnRadius;
-        const z = Math.sin(angle) * spawnRadius;
+        const spawnPos = this._getAISpawnPosition(team, this.aiPlayers);
+        const angle = team === 'blue' ? 0 : Math.PI;
         
-        const snowman = new Snowman(this.scene, false, team, false, '', true);
+        const snowman = new Snowman(this.scene, false, team, teamIsLocal, '', true);
         snowman.setCamera(this.camera);
-        snowman.setPosition(x, 0, z);
-        snowman.setRotation(angle + Math.PI);
+        snowman.setPosition(spawnPos.x, 0, spawnPos.z);
+        snowman.setRotation(angle);
         
         const aiData = {
           snowman,

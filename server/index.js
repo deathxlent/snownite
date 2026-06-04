@@ -54,20 +54,46 @@ function assignTeam() {
   return blueCount <= redCount ? 'blue' : 'red';
 }
 
-function assignSpawnPosition(team) {
-  const spawnRadius = 15;
-  const teamPlayers = [];
-  for (const player of players.values()) {
-    if (player.team === team) {
-      teamPlayers.push(player);
+function checkSpawnCollision(x, z, excludeId = null) {
+  const minDistance = 3;
+  for (const [id, player] of players) {
+    if (id === excludeId) continue;
+    const dx = x - player.x;
+    const dz = z - player.z;
+    if (dx * dx + dz * dz < minDistance * minDistance) {
+      return true;
     }
   }
-  const playerIndex = teamPlayers.length;
-  const baseAngle = team === 'blue' ? 0 : Math.PI;
-  const angle = baseAngle + (playerIndex / 5) * Math.PI * 0.8 - Math.PI * 0.4;
+  return false;
+}
+
+function assignSpawnPosition(team) {
+  const spawnDistance = 25;
+  const maxAttempts = 50;
+  
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    let baseX, baseZ;
+    if (team === 'blue') {
+      baseX = -spawnDistance + (Math.random() - 0.5) * 10;
+      baseZ = (Math.random() - 0.5) * 15;
+    } else {
+      baseX = spawnDistance + (Math.random() - 0.5) * 10;
+      baseZ = (Math.random() - 0.5) * 15;
+    }
+    
+    if (!checkSpawnCollision(baseX, baseZ)) {
+      return {
+        x: baseX,
+        z: baseZ,
+        yaw: team === 'blue' ? 0 : Math.PI
+      };
+    }
+  }
+  
+  const angle = team === 'blue' ? 0 : Math.PI;
   return {
-    x: Math.cos(angle) * spawnRadius,
-    z: Math.sin(angle) * spawnRadius,
+    x: Math.cos(angle) * spawnDistance,
+    z: Math.sin(angle) * spawnDistance,
     yaw: team === 'blue' ? 0 : Math.PI
   };
 }
