@@ -335,8 +335,9 @@ export class Snowman {
     
     if (this.indicatorGroup && this.camera) {
       this.indicatorGroup.quaternion.copy(this.camera.quaternion);
-      const flip = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
-      this.indicatorGroup.quaternion.multiply(flip);
+      const flipQuat = new THREE.Quaternion();
+      flipQuat.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+      this.indicatorGroup.quaternion.multiply(flipQuat);
     }
     
     if (this.isHit) {
