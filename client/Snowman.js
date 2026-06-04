@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import { COLORS } from '../shared/constants.js';
 
 export class Snowman {
-  constructor(scene, isLocalPlayer = false, team = 'blue', showNameLabel = false, playerName = '', isAI = false) {
+  constructor(scene, isLocalPlayer = false, team = 'blue', showNameLabel = false, playerName = '', isAI = false, localTeam = 'blue') {
     this.scene = scene;
     this.isLocalPlayer = isLocalPlayer;
     this.team = team;
     this.isAI = isAI;
+    this.localTeam = localTeam;
     this.group = new THREE.Group();
     this.yaw = 0;
     this.pitch = 0;
@@ -272,6 +273,10 @@ export class Snowman {
   _createIndicator(showNameLabel, playerName, isAI) {
     this.indicatorGroup = new THREE.Group();
     this.indicatorGroup.position.y = 4.0;
+    this.indicatorGroup.scale.z = -1;
+    
+    const isTeammate = this.team === this.localTeam;
+    const shouldShowName = this.isLocalPlayer || isTeammate;
     
     if (isAI) {
       const cubeGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
@@ -284,7 +289,7 @@ export class Snowman {
       const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
       cube.position.y = 0.15;
       this.indicatorGroup.add(cube);
-    } else if (showNameLabel) {
+    } else if (shouldShowName && showNameLabel) {
       const shape = new THREE.Shape();
       shape.moveTo(0, -0.05);
       shape.lineTo(-0.2, 0.35);
@@ -333,19 +338,6 @@ export class Snowman {
     this.collider.x = this.group.position.x;
     this.collider.z = this.group.position.z;
     
-    if (this.indicatorGroup && this.camera) {
-      const indicatorWorldPos = new THREE.Vector3();
-      this.indicatorGroup.getWorldPosition(indicatorWorldPos);
-      
-      const cameraWorldPos = new THREE.Vector3();
-      this.camera.getWorldPosition(cameraWorldPos);
-      
-      const targetPos = new THREE.Vector3().subVectors(indicatorWorldPos, cameraWorldPos);
-      targetPos.add(indicatorWorldPos);
-      
-      this.indicatorGroup.lookAt(targetPos);
-    }
-    
     if (this.isHit) {
       this.hitTimer -= deltaTime;
       if (this.hitTimer <= 0) {
@@ -362,6 +354,11 @@ export class Snowman {
   
   updateNameLabel(playerName) {
     if (!this.indicatorGroup) return;
+    
+    const isTeammate = this.team === this.localTeam;
+    const shouldShowName = this.isLocalPlayer || isTeammate;
+    
+    if (!shouldShowName) return;
     
     const oldLabel = this.indicatorGroup.children.find(child => child.geometry && child.geometry.type === 'PlaneGeometry');
     if (oldLabel) {
