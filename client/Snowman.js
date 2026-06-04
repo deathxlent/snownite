@@ -286,10 +286,10 @@ export class Snowman {
       this.indicatorGroup.add(cube);
     } else if (showNameLabel) {
       const shape = new THREE.Shape();
-      shape.moveTo(0, 0.35);
-      shape.lineTo(-0.2, -0.05);
-      shape.lineTo(0.2, -0.05);
-      shape.lineTo(0, 0.35);
+      shape.moveTo(0, -0.05);
+      shape.lineTo(-0.2, 0.35);
+      shape.lineTo(0.2, 0.35);
+      shape.lineTo(0, -0.05);
       
       const triGeometry = new THREE.ShapeGeometry(shape);
       const triMaterial = new THREE.MeshBasicMaterial({
@@ -333,13 +333,8 @@ export class Snowman {
     this.collider.x = this.group.position.x;
     this.collider.z = this.group.position.z;
     
-    if (this.indicatorGroup && this.camera) {
-      const indicatorWorldPos = new THREE.Vector3();
-      this.indicatorGroup.getWorldPosition(indicatorWorldPos);
-      const lookAtPos = new THREE.Vector3();
-      this.camera.getWorldPosition(lookAtPos);
-      lookAtPos.y = indicatorWorldPos.y;
-      this.indicatorGroup.lookAt(lookAtPos);
+    if (this.indicatorGroup && this.camera && !this.isAI) {
+      this.indicatorGroup.quaternion.copy(this.camera.quaternion);
     }
     
     if (this.isHit) {
