@@ -25,7 +25,8 @@ export class Snowman {
 
     this.knockbackActive = false;
     this.knockbackVelocity = new THREE.Vector3(0, 0, 0);
-    this.knockbackDecay = 8;
+    this.knockbackDecay = 3;
+    this.knockbackMinSpeed = 0.5;
 
     this.bodyMeshes = [];
     this.faceMeshes = [];
@@ -260,29 +261,19 @@ export class Snowman {
   }
 
   _createCore() {
-    const shape = new THREE.Shape();
-    const s = 0.12;
-    shape.moveTo(0, s * 0.7);
-    shape.bezierCurveTo(0, s, -s * 0.5, s, -s * 0.5, s * 0.5);
-    shape.bezierCurveTo(-s * 0.5, s * 0.1, 0, -s * 0.1, 0, -s * 0.5);
-    shape.bezierCurveTo(0, -s * 0.1, s * 0.5, s * 0.1, s * 0.5, s * 0.5);
-    shape.bezierCurveTo(s * 0.5, s, 0, s, 0, s * 0.7);
-
-    const extrudeSettings = { depth: 0.08, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 3 };
-    const coreGeometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    const coreGeometry = new THREE.SphereGeometry(0.15, 16, 16);
     const coreMaterial = new THREE.MeshStandardMaterial({
       color: COLORS.CORE,
       emissive: COLORS.CORE,
-      emissiveIntensity: 0.5,
-      roughness: 0.3,
-      metalness: 0.5,
+      emissiveIntensity: 0.6,
+      roughness: 0.2,
+      metalness: 0.6,
       transparent: true,
       opacity: 0
     });
 
     this.coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
     this.coreMesh.position.set(0, 2.55, 0);
-    this.coreMesh.rotation.x = Math.PI;
     this.group.add(this.coreMesh);
   }
 
@@ -335,8 +326,8 @@ export class Snowman {
   }
 
   applyKnockback(directionX, directionZ, distance) {
-    const speed = distance * this.knockbackDecay;
-    this.knockbackVelocity.set(directionX * speed, 0, directionZ * speed);
+    const initialSpeed = 12;
+    this.knockbackVelocity.set(directionX * initialSpeed, 0, directionZ * initialSpeed);
     this.knockbackActive = true;
   }
 
@@ -497,7 +488,7 @@ export class Snowman {
     if (this.knockbackActive) {
       const kb = this.knockbackVelocity;
       const speed = Math.sqrt(kb.x * kb.x + kb.z * kb.z);
-      if (speed < 0.1) {
+      if (speed < this.knockbackMinSpeed) {
         this.knockbackActive = false;
         kb.set(0, 0, 0);
       } else {

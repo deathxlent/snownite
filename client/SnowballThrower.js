@@ -95,13 +95,13 @@ export class SnowballThrower {
   _getThrowStartPosition(playerPos, yaw) {
     const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
     return new THREE.Vector3(
-      playerPos.x + forward.x * 0.5,
-      1.8,
-      playerPos.z + forward.z * 0.5
+      playerPos.x + forward.x * 1.2,
+      2.0,
+      playerPos.z + forward.z * 1.2
     );
   }
 
-  throw(playerPos, yaw, pitch, isCharged, snowballManager) {
+  throw(playerPos, yaw, pitch, isCharged, snowballManager, throwerSnowman = null) {
     if (!snowballManager.useSnowball()) return false;
 
     const startPos = this._getThrowStartPosition(playerPos, yaw);
@@ -115,7 +115,8 @@ export class SnowballThrower {
       velocity,
       isCharged,
       (collider, hitResult) => this._onHit(collider, hitResult),
-      (x, z) => this._onGroundHit(x, z)
+      (x, z) => this._onGroundHit(x, z),
+      throwerSnowman
     );
 
     this.projectiles.push(projectile);
@@ -155,7 +156,7 @@ export class SnowballThrower {
     }
   }
 
-  update(deltaTime, playerPos, yaw, pitch, wantThrow, chargeTime, snowballManager) {
+  update(deltaTime, playerPos, yaw, pitch, wantThrow, chargeTime, snowballManager, throwerSnowman = null) {
     this.wantThrowPrev = this.wantThrow;
     this.wantThrow = wantThrow;
 
@@ -183,7 +184,7 @@ export class SnowballThrower {
 
     if (!this.wantThrow && this.wantThrowPrev && this.isCharging) {
       const wasCharged = this.isCharged;
-      this.throw(playerPos, yaw, pitch, wasCharged, snowballManager);
+      this.throw(playerPos, yaw, pitch, wasCharged, snowballManager, throwerSnowman);
       this.isCharging = false;
       this.isCharged = false;
       this.chargeTime = 0;

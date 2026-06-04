@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { GAME_CONFIG } from '../shared/constants.js';
 
 export class SnowballProjectile {
-  constructor(scene, startPos, velocity, isCharged = false, onHit = null, onGroundHit = null) {
+  constructor(scene, startPos, velocity, isCharged = false, onHit = null, onGroundHit = null, ignoreSnowman = null) {
     this.scene = scene;
     this.velocity = velocity.clone();
     this.isCharged = isCharged;
     this.onHit = onHit;
     this.onGroundHit = onGroundHit;
+    this.ignoreSnowman = ignoreSnowman;
     this.active = true;
     this.lifetime = 5;
     this.gravity = GAME_CONFIG.THROW_GRAVITY;
@@ -178,6 +179,10 @@ export class SnowballProjectile {
     }
 
     if (collider.snowman) {
+      if (collider.snowman === this.ignoreSnowman) {
+        return null;
+      }
+
       const snowmanPos = collider.snowman.getPosition();
       const dx = pos.x - snowmanPos.x;
       const dz = pos.z - snowmanPos.z;

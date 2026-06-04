@@ -271,9 +271,9 @@ export class GameEngine {
         const aiPos = ai.snowman.getPosition();
         const aiYaw = ai.snowman.getRotation();
         const startPos = new THREE.Vector3(
-          aiPos.x + Math.sin(aiYaw) * 0.5,
-          1.8,
-          aiPos.z + Math.cos(aiYaw) * 0.5
+          aiPos.x + Math.sin(aiYaw) * 1.2,
+          2.0,
+          aiPos.z + Math.cos(aiYaw) * 1.2
         );
         
         const defaultPitch = Math.PI / 4.5;
@@ -290,7 +290,8 @@ export class GameEngine {
           velocity,
           false,
           (collider, hitResult) => this._onAIHit(collider, hitResult),
-          (x, z) => this._onAIGroundHit(x, z)
+          (x, z) => this._onAIGroundHit(x, z),
+          ai.snowman
         );
         this.snowballThrower.projectiles.push(projectile);
         ai.snowballCount--;
@@ -503,7 +504,8 @@ export class GameEngine {
       playerPitch,
       canThrow ? wantThrow : false,
       chargeTime,
-      this.snowballManager
+      this.snowballManager,
+      this.localPlayer
     );
     
     if (!canThrow && wantThrow) {
