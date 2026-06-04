@@ -71,8 +71,8 @@ export class GameEngine {
     
     this.inputSystem = new InputSystem(this.canvas);
     this.mapGenerator = new MapGenerator(this.scene);
-    this.snowballManager = new SnowballManager(this.mapGenerator.gridGround);
-    this.snowballThrower = new SnowballThrower(this.scene, this.mapGenerator.gridGround);
+    this.snowballManager = new SnowballManager(this.mapGenerator.gridGround, this.mapGenerator);
+    this.snowballThrower = new SnowballThrower(this.scene, this.mapGenerator.gridGround, this.mapGenerator);
     
     this.localPlayer = new Snowman(this.scene, true, this.localTeam, true, this.playerName, false, this.localTeam);
     this.localPlayer.setCamera(this.camera);
@@ -289,7 +289,7 @@ export class GameEngine {
           startPos,
           velocity,
           false,
-          (collider) => this._onAIHit(collider, ai),
+          (collider, hitResult) => this._onAIHit(collider, hitResult),
           (x, z) => this._onAIGroundHit(x, z)
         );
         this.snowballThrower.projectiles.push(projectile);
@@ -389,12 +389,47 @@ export class GameEngine {
       
       ai.snowman.setPosition(currentPos.x, 0, currentPos.z);
       ai.snowman.update(deltaTime);
+      
+      if (ai.snowman.knockbackActive) {
+        const kb = ai.snowman.knockbackVelocity;
+        const aiPos = ai.snowman.getPosition();
+        let aiNewX = aiPos.x + kb.x * deltaTime;
+        let aiNewZ = aiPos.z + kb.z * deltaTime;
+        
+        if (!this.mapGenerator.checkCollision(aiNewX, aiPos.z, GAME_CONFIG.PLAYER_RADIUS)) {
+          aiPos.x = aiNewX;
+        } else {
+          kb.x = 0;
+        }
+        if (!this.mapGenerator.checkCollision(aiPos.x, aiNewZ, GAME_CONFIG.PLAYER_RADIUS)) {
+          aiPos.z = aiNewZ;
+        } else {
+          kb.z = 0;
+        }
+        
+        ai.snowman.setPosition(aiPos.x, 0, aiPos.z);
+      }
     }
   }
   
-  _onAIHit(collider, ai) {
+  _onAIHit(collider, hitResult) {
     if (collider.snowman) {
-      collider.snowman.hit();
+      if (hitResult && typeof hitResult === 'object') {
+        const { isHeadshot, isCharged, hitDirectionX, hitDirectionZ } = hitResult;
+        let damage;
+        if (isCharged) {
+          damage = isHeadshot ? GAME_CONFIG.CHARGED_SNOWBALL_HEADSHOT_DAMAGE : GAME_CONFIG.CHARGED_SNOWBALL_DAMAGE;
+        } else {
+          damage = isHeadshot ? GAME_CONFIG.SNOWBALL_HEADSHOT_DAMAGE : GAME_CONFIG.SNOWBALL_DAMAGE;
+        }
+        collider.snowman.takeDamage(damage, isHeadshot);
+        if (isCharged) {
+          collider.snowman.applyKnockback(hitDirectionX, hitDirectionZ, GAME_CONFIG.CHARGED_KNOCKBACK_DISTANCE);
+        }
+      } else {
+        collider.snowman.takeDamage(GAME_CONFIG.SNOWBALL_DAMAGE, false);
+      }
+      this._updateHPUI();
     }
   }
   
@@ -481,6 +516,28 @@ export class GameEngine {
     
     this.localPlayer.setRotation(cameraYaw);
     this.localPlayer.update(deltaTime);
+    
+    if (this.localPlayer.knockbackActive) {
+      const kb = this.localPlayer.knockbackVelocity;
+      const currentPos = this.localPlayer.getPosition();
+      let newX = currentPos.x + kb.x * deltaTime;
+      let newZ = currentPos.z + kb.z * deltaTime;
+      
+      if (!this.mapGenerator.checkCollision(newX, currentPos.z, GAME_CONFIG.PLAYER_RADIUS)) {
+        currentPos.x = newX;
+      } else {
+        kb.x = 0;
+      }
+      if (!this.mapGenerator.checkCollision(currentPos.x, newZ, GAME_CONFIG.PLAYER_RADIUS)) {
+        currentPos.z = newZ;
+      } else {
+        kb.z = 0;
+      }
+      
+      this.localPlayer.setPosition(currentPos.x, 0, currentPos.z);
+    }
+    
+    this._updateHPUI();
     
     const forward = new THREE.Vector2(
       Math.sin(cameraYaw),
@@ -648,6 +705,61 @@ export class GameEngine {
       } else {
         staminaFill.style.backgroundColor = '#2ecc71';
       }
+    }
+  }
+  
+  _updateHPUI() {
+    if (!this.localPlayer) return;
+    
+    let hpBar = document.getElementById('hp-bar');
+    let hpFill = document.getElementById('hp-fill');
+    let hpText = document.getElementById('hp-text');
+    
+    if (!hpBar) {
+      const uiContainer = document.getElementById('game-ui');
+      if (!uiContainer) return;
+      
+      hpBar = document.createElement('div');
+      hpBar.id = 'hp-bar';
+      hpBar.style.cssText = 'position:absolute;bottom:80px;left:50%;transform:translateX(-50%);width:200px;height:20px;background:rgba(0,0,0,0.5);border-radius:10px;border:2px solid rgba(255,255,255,0.3);overflow:hidden;z-index:10;';
+      
+      hpFill = document.createElement('div');
+      hpFill.id = 'hp-fill';
+      hpFill.style.cssText = 'width:100%;height:100%;border-radius:8px;transition:width 0.3s,background-color 0.3s;';
+      
+      hpText = document.createElement('div');
+      hpText.id = 'hp-text';
+      hpText.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:12px;font-weight:bold;text-shadow:0 0 3px rgba(0,0,0,0.8);';
+      
+      hpBar.appendChild(hpFill);
+      hpBar.appendChild(hpText);
+      uiContainer.appendChild(hpBar);
+    }
+    
+    const hp = this.localPlayer.hp;
+    const maxHp = GAME_CONFIG.PLAYER_MAX_HP;
+    const ratio = hp / maxHp;
+    
+    hpFill = document.getElementById('hp-fill');
+    hpText = document.getElementById('hp-text');
+    
+    if (hpFill) {
+      hpFill.style.width = `${ratio * 100}%`;
+      if (hp >= 70) {
+        hpFill.style.background = 'linear-gradient(90deg, #2ecc71, #27ae60)';
+      } else if (hp >= 30) {
+        hpFill.style.background = 'linear-gradient(90deg, #f1c40f, #e67e22)';
+      } else if (hp >= 10) {
+        hpFill.style.background = 'linear-gradient(90deg, #e74c3c, #c0392b)';
+        hpFill.style.animation = 'hp-flash 0.5s infinite';
+      } else {
+        hpFill.style.background = 'linear-gradient(90deg, #8e44ad, #6c3483)';
+        hpFill.style.animation = 'hp-flash 0.3s infinite';
+      }
+    }
+    
+    if (hpText) {
+      hpText.textContent = `${Math.ceil(hp)} / ${maxHp}`;
     }
   }
   

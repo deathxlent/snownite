@@ -1,8 +1,9 @@
 import { GAME_CONFIG } from '../shared/constants.js';
 
 export class SnowballManager {
-  constructor(gridGround) {
+  constructor(gridGround, mapGenerator = null) {
     this.gridGround = gridGround;
+    this.mapGenerator = mapGenerator;
     this.snowballCount = 0;
     this.maxSnowballs = GAME_CONFIG.MAX_SNOWBALLS;
     this.baseGatherDuration = GAME_CONFIG.GATHER_DURATION;
@@ -49,6 +50,10 @@ export class SnowballManager {
   update(deltaTime, playerX, playerZ, playerYaw) {
     this.gridGround.update(deltaTime);
 
+    if (this.mapGenerator) {
+      this.mapGenerator.updateWalls(deltaTime);
+    }
+
     if (!this.isGathering) {
       if (this.holdActive && this.snowballCount < this.maxSnowballs) {
         this.startGather(playerX, playerZ, playerYaw);
@@ -66,12 +71,36 @@ export class SnowballManager {
   _completeGather() {
     this.isGathering = false;
 
-    const success = this.gridGround.tryGatherSnow(
-      this.gatherPosition.x,
-      this.gatherPosition.z,
-      this.gatherYaw,
-      this.snowballCost
-    );
+    let success = false;
+
+    if (this.mapGenerator) {
+      const wallGathered = this.mapGenerator.tryGatherFromWall(
+        this.gatherPosition.x,
+        this.gatherPosition.z,
+        this.gatherYaw,
+        this.snowballCost
+      );
+      if (wallGathered >= this.snowballCost) {
+        success = true;
+      } else {
+        success = this.gridGround.tryGatherSnow(
+          this.gatherPosition.x,
+          this.gatherPosition.z,
+          this.gatherYaw,
+          this.snowballCost - wallGathered
+        );
+        if (wallGathered > 0 && success) {
+          success = true;
+        }
+      }
+    } else {
+      success = this.gridGround.tryGatherSnow(
+        this.gatherPosition.x,
+        this.gatherPosition.z,
+        this.gatherYaw,
+        this.snowballCost
+      );
+    }
 
     if (success && this.snowballCount < this.maxSnowballs) {
       this.snowballCount++;
@@ -145,7 +174,7 @@ export class SnowballManager {
       if (this.isGathering || this.holdActive) {
         progressBar.style.display = 'block';
         progressFill.style.width = `${this.getProgress() * 100}%`;
-        
+
         const speedPercent = ((this.baseGatherDuration - this.currentGatherDuration) / (this.baseGatherDuration - this.minGatherDuration)) * 100;
         const hue = 200 - speedPercent * 1.2;
         progressFill.style.background = `linear-gradient(90deg, hsl(${hue}, 70%, 50%), hsl(${hue - 30}, 70%, 60%))`;

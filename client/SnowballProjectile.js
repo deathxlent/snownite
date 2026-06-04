@@ -22,11 +22,11 @@ export class SnowballProjectile {
   _createMesh(pos) {
     const geometry = new THREE.SphereGeometry(this.radius, 12, 12);
     const material = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
+      color: this.isCharged ? 0xcceeff : 0xffffff,
       roughness: 0.8,
-      metalness: 0.0
+      metalness: this.isCharged ? 0.2 : 0.0
     });
-    
+
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.position.copy(pos);
     this.mesh.castShadow = true;
@@ -36,12 +36,12 @@ export class SnowballProjectile {
   _createTrail() {
     const trailGeometry = new THREE.BufferGeometry();
     const trailMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
+      color: this.isCharged ? 0xaaddff : 0xffffff,
       size: 0.08,
       transparent: true,
       opacity: 0.6
     });
-    
+
     this.trail = new THREE.Points(trailGeometry, trailMaterial);
     this.scene.add(this.trail);
   }
@@ -56,12 +56,12 @@ export class SnowballProjectile {
     for (let i = this.trailPoints.length - 1; i >= 0; i--) {
       const point = this.trailPoints[i];
       point.time += 0.016;
-      
+
       if (point.time > this.trailLifetime) {
         this.trailPoints.splice(i, 1);
         continue;
       }
-      
+
       positions.push(point.position.x, point.position.y, point.position.z);
     }
 
@@ -74,7 +74,7 @@ export class SnowballProjectile {
     const geometry = new THREE.BufferGeometry();
     const positions = [];
     const velocities = [];
-    
+
     for (let i = 0; i < particleCount; i++) {
       positions.push(this.mesh.position.x, this.mesh.position.y, this.mesh.position.z);
       velocities.push(
@@ -83,19 +83,19 @@ export class SnowballProjectile {
         (Math.random() - 0.5) * 4
       );
     }
-    
+
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    
+
     const material = new THREE.PointsMaterial({
       color: 0xffffff,
       size: 0.1,
       transparent: true,
       opacity: 1
     });
-    
+
     const particles = new THREE.Points(geometry, material);
     this.scene.add(particles);
-    
+
     let life = 0.5;
     const animate = () => {
       life -= 0.016;
@@ -105,7 +105,7 @@ export class SnowballProjectile {
         material.dispose();
         return;
       }
-      
+
       const posAttr = particles.geometry.attributes.position;
       for (let i = 0; i < particleCount; i++) {
         posAttr.setX(i, posAttr.getX(i) + velocities[i * 3] * 0.016);
@@ -115,7 +115,7 @@ export class SnowballProjectile {
       }
       posAttr.needsUpdate = true;
       material.opacity = life * 2;
-      
+
       requestAnimationFrame(animate);
     };
     animate();
@@ -131,7 +131,7 @@ export class SnowballProjectile {
     }
 
     this.velocity.y -= this.gravity * deltaTime;
-    
+
     const oldPos = this.mesh.position.clone();
     this.mesh.position.x += this.velocity.x * deltaTime;
     this.mesh.position.y += this.velocity.y * deltaTime;
@@ -150,10 +150,11 @@ export class SnowballProjectile {
     }
 
     for (const collider of colliders) {
-      if (this._checkCollision(collider)) {
+      const hitResult = this._checkCollision(collider);
+      if (hitResult) {
         this._createShatterEffect();
         if (this.onHit) {
-          this.onHit(collider);
+          this.onHit(collider, hitResult);
         }
         this.destroy();
         return;
@@ -163,33 +164,46 @@ export class SnowballProjectile {
 
   _checkCollision(collider) {
     const pos = this.mesh.position;
-    
+
     if (collider.type === 'cylinder') {
       const dx = pos.x - collider.x;
       const dz = pos.z - collider.z;
       const distXZ = Math.sqrt(dx * dx + dz * dz);
-      
+
       if (distXZ < collider.radius + this.radius) {
         if (pos.y > 0 && pos.y < 3.5) {
           return true;
         }
       }
     }
-    
+
     if (collider.snowman) {
       const snowmanPos = collider.snowman.getPosition();
       const dx = pos.x - snowmanPos.x;
       const dz = pos.z - snowmanPos.z;
       const distXZ = Math.sqrt(dx * dx + dz * dz);
-      
+
       if (distXZ < 0.75 + this.radius) {
         if (pos.y > 0.5 && pos.y < 3.0) {
-          return true;
+          const isHeadshot = pos.y >= GAME_CONFIG.HEAD_HIT_Y;
+          const hitDirectionX = this.velocity.x !== 0 || this.velocity.z !== 0
+            ? this.velocity.x / Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z)
+            : 0;
+          const hitDirectionZ = this.velocity.x !== 0 || this.velocity.z !== 0
+            ? this.velocity.z / Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z)
+            : 0;
+
+          return {
+            isHeadshot,
+            isCharged: this.isCharged,
+            hitDirectionX,
+            hitDirectionZ
+          };
         }
       }
     }
-    
-    return false;
+
+    return null;
   }
 
   destroy() {
