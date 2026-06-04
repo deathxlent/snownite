@@ -224,8 +224,8 @@ export class GameEngine {
             (Math.random() - 0.5) * 2
           ).normalize(),
           state: 'patrol',
-          snowballCount: 0,
-          maxSnowballs: 5,
+          snowballCount: 5,
+          maxSnowballs: 20,
           gatherTimer: 0,
           gatherDuration: 2.0,
           isGathering: false,
@@ -243,6 +243,18 @@ export class GameEngine {
   
   _updateAI(deltaTime) {
     for (const ai of this.aiPlayers) {
+      ai.snowman.snowballCount = ai.snowballCount;
+      
+      if (ai.snowman.isDead) {
+        ai.snowman.update(deltaTime);
+        if (ai.snowman.isRespawning && ai.snowman.respawnTimer <= 0) {
+          const spawnPos = this._getRandomSpawnPosition();
+          ai.snowman.respawn(spawnPos.x, spawnPos.z);
+          ai.snowballCount = 5;
+        }
+        continue;
+      }
+      
       if (ai.throwCooldown > 0) ai.throwCooldown -= deltaTime;
       if (ai.gatherCooldown > 0) ai.gatherCooldown -= deltaTime;
       
@@ -365,7 +377,8 @@ export class GameEngine {
       const newYaw = currentYaw + yawDiff * Math.min(1, deltaTime * 3);
       ai.snowman.setRotation(newYaw);
       
-      const speed = ai.state === 'chase' ? 3.5 : 2.5;
+      const baseSpeed = ai.state === 'chase' ? 3.5 : 2.5;
+      const speed = baseSpeed * ai.snowman.speedMultiplier;
       const moveAmount = speed * deltaTime;
       
       const currentPos = ai.snowman.getPosition();
@@ -492,6 +505,8 @@ export class GameEngine {
     this.snowballManager.setHoldActive(wantGather);
     this.isGathering = this.snowballManager.isGathering || (wantGather && this.snowballManager.snowballCount < this.snowballManager.maxSnowballs);
     
+    this.localPlayer.snowballCount = this.snowballManager.snowballCount;
+    
     this.snowballManager.update(deltaTime, playerPos.x, playerPos.z, playerYaw);
     this.snowballManager.updateGatherUI();
     
@@ -518,6 +533,14 @@ export class GameEngine {
     
     this.localPlayer.setRotation(cameraYaw);
     this.localPlayer.update(deltaTime);
+    
+    if (this.localPlayer.isDead) {
+      this._updateRespawnUI();
+      if (this.localPlayer.isRespawning && this.localPlayer.respawnTimer <= 0) {
+        this._respawnPlayer();
+      }
+      return;
+    }
     
     if (this.localPlayer.knockbackActive) {
       const kb = this.localPlayer.knockbackVelocity;
@@ -573,7 +596,7 @@ export class GameEngine {
     if (isMoving) {
       moveDirection.normalize();
       
-      let speed = GAME_CONFIG.PLAYER_SPEED;
+      let speed = GAME_CONFIG.PLAYER_SPEED * this.localPlayer.speedMultiplier;
       if (this.isSprinting) {
         speed *= 1.5;
       }
@@ -601,6 +624,7 @@ export class GameEngine {
     this.thirdPersonCamera.update(deltaTime);
     
     this._updateAI(deltaTime);
+    this._updateSpeedUI();
     
     if (this.isNetworked && this.networkClient) {
       const now = Date.now();
@@ -763,6 +787,105 @@ export class GameEngine {
     if (hpText) {
       hpText.textContent = `${Math.ceil(hp)} / ${maxHp}`;
     }
+  }
+
+  _updateRespawnUI() {
+    if (!this.localPlayer) return;
+    
+    let respawnOverlay = document.getElementById('respawn-overlay');
+    
+    if (!respawnOverlay) {
+      const uiContainer = document.getElementById('game-ui');
+      if (!uiContainer) return;
+      
+      respawnOverlay = document.createElement('div');
+      respawnOverlay.id = 'respawn-overlay';
+      respawnOverlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:100;color:white;font-family:"Microsoft YaHei",sans-serif;';
+      
+      const title = document.createElement('div');
+      title.id = 'respawn-title';
+      title.style.cssText = 'font-size:48px;font-weight:bold;margin-bottom:20px;color:#e74c3c;text-shadow:0 0 20px rgba(231,76,60,0.8);';
+      title.textContent = '你被淘汰了！';
+      
+      const timer = document.createElement('div');
+      timer.id = 'respawn-timer';
+      timer.style.cssText = 'font-size:32px;color:#f39c12;';
+      
+      respawnOverlay.appendChild(title);
+      respawnOverlay.appendChild(timer);
+      uiContainer.appendChild(respawnOverlay);
+    }
+    
+    const timerEl = document.getElementById('respawn-timer');
+    if (timerEl) {
+      const remaining = Math.ceil(this.localPlayer.respawnTimer);
+      if (remaining > 0) {
+        timerEl.textContent = `${remaining} 秒后复活...`;
+      } else {
+        timerEl.textContent = '复活中...';
+      }
+    }
+  }
+
+  _hideRespawnUI() {
+    const respawnOverlay = document.getElementById('respawn-overlay');
+    if (respawnOverlay) {
+      respawnOverlay.remove();
+    }
+  }
+
+  _respawnPlayer() {
+    const spawnPos = this._getRandomSpawnPosition();
+    this.localPlayer.respawn(spawnPos.x, spawnPos.z);
+    this.snowballManager.reset();
+    this._hideRespawnUI();
+    this._updateHPUI();
+    this._updateSpeedUI();
+  }
+
+  _getRandomSpawnPosition() {
+    const maxAttempts = 100;
+    const worldSize = GAME_CONFIG.WORLD_SIZE * 0.8;
+    const halfWorld = GAME_CONFIG.WORLD_SIZE / 2;
+    
+    for (let i = 0; i < maxAttempts; i++) {
+      const x = (Math.random() - 0.5) * worldSize;
+      const z = (Math.random() - 0.5) * worldSize;
+      
+      const centerDist = Math.sqrt(x * x + z * z);
+      if (centerDist < 8) continue;
+      
+      if (!this.mapGenerator.checkCollision(x, z, GAME_CONFIG.PLAYER_RADIUS * 2) &&
+          !this._checkPlayerCollision(x, z, null)) {
+        return { x, z };
+      }
+    }
+    
+    return { x: 0, z: 0 };
+  }
+
+  _updateSpeedUI() {
+    if (!this.localPlayer || this.localPlayer.isDead) return;
+    
+    let speedUI = document.getElementById('speed-indicator');
+    if (!speedUI) {
+      const uiContainer = document.getElementById('game-ui');
+      if (!uiContainer) return;
+      
+      speedUI = document.createElement('div');
+      speedUI.id = 'speed-indicator';
+      speedUI.style.cssText = 'position:absolute;bottom:110px;left:50%;transform:translateX(-50%);color:white;font-size:14px;font-weight:bold;text-shadow:0 0 3px rgba(0,0,0,0.8);font-family:"Microsoft YaHei",sans-serif;z-index:11;';
+      uiContainer.appendChild(speedUI);
+    }
+    
+    const speedPercent = Math.round(this.localPlayer.speedMultiplier * 100);
+    let color = '#2ecc71';
+    if (speedPercent > 120) color = '#e74c3c';
+    else if (speedPercent > 100) color = '#f39c12';
+    else if (speedPercent < 90) color = '#3498db';
+    
+    speedUI.style.color = color;
+    speedUI.textContent = `速度: ${speedPercent}%  |  HP: ${Math.ceil(this.localPlayer.hp)}  |  雪球: ${this.snowballManager.snowballCount}`;
   }
   
   destroy() {

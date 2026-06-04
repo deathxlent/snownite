@@ -122,6 +122,73 @@ export class SnowballProjectile {
     animate();
   }
 
+  _createHitSplashEffect() {
+    const particleCount = 25;
+    const geometry = new THREE.BufferGeometry();
+    const positions = [];
+    const velocities = [];
+
+    const pos = this.mesh.position;
+    const speed = Math.sqrt(this.velocity.x ** 2 + this.velocity.y ** 2 + this.velocity.z ** 2);
+    const hitDirX = speed > 0 ? this.velocity.x / speed : 0;
+    const hitDirY = speed > 0 ? this.velocity.y / speed : 0;
+    const hitDirZ = speed > 0 ? this.velocity.z / speed : 0;
+
+    for (let i = 0; i < particleCount; i++) {
+      positions.push(pos.x, pos.y, pos.z);
+
+      const spread = 0.7;
+      const randX = (Math.random() - 0.5) * spread;
+      const randY = (Math.random() - 0.5) * spread;
+      const randZ = (Math.random() - 0.5) * spread;
+
+      const reflectFactor = 0.6 + Math.random() * 0.4;
+      velocities.push(
+        (-hitDirX * reflectFactor + randX) * (3 + Math.random() * 3),
+        (-hitDirY * reflectFactor + Math.abs(randY)) * (2 + Math.random() * 3),
+        (-hitDirZ * reflectFactor + randZ) * (3 + Math.random() * 3)
+      );
+    }
+
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+
+    const material = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.08,
+      transparent: true,
+      opacity: 1
+    });
+
+    const particles = new THREE.Points(geometry, material);
+    this.scene.add(particles);
+
+    let life = 0.6;
+    const gravity = 25;
+    const animate = () => {
+      life -= 0.016;
+      if (life <= 0) {
+        this.scene.remove(particles);
+        geometry.dispose();
+        material.dispose();
+        return;
+      }
+
+      const posAttr = particles.geometry.attributes.position;
+      for (let i = 0; i < particleCount; i++) {
+        posAttr.setX(i, posAttr.getX(i) + velocities[i * 3] * 0.016);
+        posAttr.setY(i, posAttr.getY(i) + velocities[i * 3 + 1] * 0.016);
+        posAttr.setZ(i, posAttr.getZ(i) + velocities[i * 3 + 2] * 0.016);
+        velocities[i * 3 + 1] -= gravity * 0.016;
+      }
+      posAttr.needsUpdate = true;
+      material.opacity = Math.max(0, life / 0.6);
+      material.size = 0.08 * (0.5 + life);
+
+      requestAnimationFrame(animate);
+    };
+    animate();
+  }
+
   update(deltaTime, colliders) {
     if (!this.active) return;
 
@@ -154,6 +221,9 @@ export class SnowballProjectile {
       const hitResult = this._checkCollision(collider);
       if (hitResult) {
         this._createShatterEffect();
+        if (collider.snowman) {
+          this._createHitSplashEffect();
+        }
         if (this.onHit) {
           this.onHit(collider, hitResult);
         }

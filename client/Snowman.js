@@ -33,6 +33,13 @@ export class Snowman {
     this.accessoryMeshes = [];
     this.outlineMeshes = [];
 
+    this.speedMultiplier = 1.0;
+    this.snowballCount = 5;
+
+    this.deathCoreMesh = null;
+    this.respawnTimer = 0;
+    this.isRespawning = false;
+
     this._createBody();
     this._createHead();
     this._createFace();
@@ -322,7 +329,80 @@ export class Snowman {
 
     if (this.hp <= 0) {
       this.isDead = true;
+      this._onDeath();
     }
+  }
+
+  _onDeath() {
+    this._createDeathCore();
+    this._setVisibility(false);
+    this.isRespawning = true;
+    this.respawnTimer = 5.0;
+    this.knockbackActive = false;
+  }
+
+  _createDeathCore() {
+    if (this.deathCoreMesh) {
+      this.scene.remove(this.deathCoreMesh);
+      this.deathCoreMesh.geometry.dispose();
+      this.deathCoreMesh.material.dispose();
+    }
+
+    const coreGeometry = new THREE.IcosahedronGeometry(0.25, 1);
+    const coreMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1a1a1a,
+      emissive: 0x330000,
+      emissiveIntensity: 0.4,
+      roughness: 0.3,
+      metalness: 0.8
+    });
+
+    this.deathCoreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
+    this.deathCoreMesh.position.set(
+      this.group.position.x,
+      0.25,
+      this.group.position.z
+    );
+
+    this.scene.add(this.deathCoreMesh);
+  }
+
+  _setVisibility(visible) {
+    this.group.visible = visible;
+    if (this.indicatorGroup) {
+      this.indicatorGroup.visible = visible;
+    }
+  }
+
+  updateSpeedMultiplier() {
+    const baseSpeed = 1.05;
+    const snowballPenalty = this.snowballCount * 0.01;
+    const hpBonus = this.hp * 0.01;
+    this.speedMultiplier = baseSpeed - snowballPenalty + hpBonus;
+  }
+
+  respawn(x, z) {
+    this.hp = GAME_CONFIG.PLAYER_MAX_HP;
+    this.isDead = false;
+    this.isRespawning = false;
+    this.snowballCount = 5;
+    this.knockbackActive = false;
+    this.knockbackVelocity.set(0, 0, 0);
+
+    this.group.position.set(x, 0, z);
+    this.collider.x = x;
+    this.collider.z = z;
+
+    if (this.deathCoreMesh) {
+      this.scene.remove(this.deathCoreMesh);
+      this.deathCoreMesh.geometry.dispose();
+      this.deathCoreMesh.material.dispose();
+      this.deathCoreMesh = null;
+    }
+
+    this._setVisibility(true);
+    this._updateTransparency();
+    this.updateSpeedMultiplier();
   }
 
   applyKnockback(directionX, directionZ, distance) {
@@ -484,6 +564,20 @@ export class Snowman {
   update(deltaTime) {
     this.collider.x = this.group.position.x;
     this.collider.z = this.group.position.z;
+
+    if (this.isDead) {
+      if (this.isRespawning && this.respawnTimer > 0) {
+        this.respawnTimer -= deltaTime;
+      }
+      if (this.deathCoreMesh) {
+        this.deathCoreMesh.rotation.y += deltaTime * 2;
+        this.deathCoreMesh.rotation.x += deltaTime * 1.5;
+        this.deathCoreMesh.position.y = 0.25 + Math.sin(Date.now() * 0.003) * 0.05;
+      }
+      return;
+    }
+
+    this.updateSpeedMultiplier();
 
     if (this.knockbackActive) {
       const kb = this.knockbackVelocity;

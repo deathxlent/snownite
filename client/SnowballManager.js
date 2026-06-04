@@ -4,7 +4,7 @@ export class SnowballManager {
   constructor(gridGround, mapGenerator = null) {
     this.gridGround = gridGround;
     this.mapGenerator = mapGenerator;
-    this.snowballCount = 0;
+    this.snowballCount = 5;
     this.maxSnowballs = GAME_CONFIG.MAX_SNOWBALLS;
     this.baseGatherDuration = GAME_CONFIG.GATHER_DURATION;
     this.minGatherDuration = GAME_CONFIG.MIN_GATHER_DURATION;
@@ -211,5 +211,16 @@ export class SnowballManager {
     if (speedEl) {
       speedEl.style.display = 'none';
     }
+  }
+
+  reset() {
+    this.snowballCount = 5;
+    this.isGathering = false;
+    this.gatherProgress = 0;
+    this.gatherPosition = null;
+    this.consecutiveCount = 0;
+    this.currentGatherDuration = this.baseGatherDuration;
+    this.holdActive = false;
+    this._updateUI();
   }
 }
