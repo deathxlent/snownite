@@ -16,6 +16,7 @@ export class NetworkClient {
     this.onWorldState = null;
     this.onWelcome = null;
     this.onDisconnect = null;
+    this.onPlayerNameUpdate = null;
   }
   
   connect(serverUrl, playerName) {
@@ -115,6 +116,12 @@ export class NetworkClient {
       case MESSAGE_TYPES.WORLD_STATE:
         if (this.onWorldState) {
           this.onWorldState(message.data);
+        }
+        break;
+        
+      case MESSAGE_TYPES.PLAYER_NAME_UPDATE:
+        if (this.onPlayerNameUpdate) {
+          this.onPlayerNameUpdate(message.data);
         }
         break;
     }

@@ -334,9 +334,9 @@ export class Snowman {
     this.collider.z = this.group.position.z;
     
     if (this.indicatorGroup && this.camera) {
-      const cameraWorldPos = new THREE.Vector3();
-      this.camera.getWorldPosition(cameraWorldPos);
-      this.indicatorGroup.lookAt(cameraWorldPos);
+      this.indicatorGroup.quaternion.copy(this.camera.quaternion);
+      const flip = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+      this.indicatorGroup.quaternion.multiply(flip);
     }
     
     if (this.isHit) {
@@ -350,6 +350,43 @@ export class Snowman {
           }
         });
       }
+    }
+  }
+  
+  updateNameLabel(playerName) {
+    if (!this.indicatorGroup) return;
+    
+    const oldLabel = this.indicatorGroup.children.find(child => child.geometry && child.geometry.type === 'PlaneGeometry');
+    if (oldLabel) {
+      this.indicatorGroup.remove(oldLabel);
+      if (oldLabel.material && oldLabel.material.map) {
+        oldLabel.material.map.dispose();
+      }
+    }
+    
+    if (playerName) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'rgba(138, 180, 248, 0.95)';
+      ctx.fillRect(0, 0, 512, 64);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 32px Microsoft YaHei, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(playerName, 256, 32);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      const labelGeometry = new THREE.PlaneGeometry(3.2, 0.4);
+      const labelMaterial = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide
+      });
+      const label = new THREE.Mesh(labelGeometry, labelMaterial);
+      label.position.y = -0.2;
+      this.indicatorGroup.add(label);
     }
   }
   

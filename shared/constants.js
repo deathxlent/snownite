@@ -48,7 +48,8 @@ export const MESSAGE_TYPES = {
   PLAYER_LEAVE: 'player_leave',
   PLAYER_MOVE: 'player_move',
   WORLD_STATE: 'world_state',
-  WELCOME: 'welcome'
+  WELCOME: 'welcome',
+  PLAYER_NAME_UPDATE: 'player_name_update'
 };
 
 export const COLORS = {

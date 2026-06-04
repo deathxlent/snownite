@@ -154,14 +154,10 @@ function handleMessage(playerId, message) {
         
         if (nameChanged) {
           broadcast({
-            type: MESSAGE_TYPES.PLAYER_JOIN,
+            type: MESSAGE_TYPES.PLAYER_NAME_UPDATE,
             data: {
               id: playerId,
-              name: player.name,
-              team: player.team,
-              x: player.x,
-              z: player.z,
-              yaw: player.yaw
+              name: player.name
             }
           });
         }

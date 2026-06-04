@@ -100,6 +100,7 @@ export class GameEngine {
       this.networkClient.onPlayerJoin = (playerData) => this._onPlayerJoin(playerData);
       this.networkClient.onPlayerLeave = (playerId) => this._onPlayerLeave(playerId);
       this.networkClient.onWorldState = (state) => this._onWorldState(state);
+      this.networkClient.onPlayerNameUpdate = (data) => this._onPlayerNameUpdate(data);
     }
   }
   
@@ -518,7 +519,8 @@ export class GameEngine {
     
     const playerTeam = playerData.team || 'red';
     const isTeammate = playerTeam === this.localTeam;
-    const snowman = new Snowman(this.scene, false, playerTeam, isTeammate, playerData.name || '', false);
+    const playerName = playerData.name || '';
+    const snowman = new Snowman(this.scene, false, playerTeam, isTeammate, playerName, false);
     snowman.setCamera(this.camera);
     snowman.setPosition(playerData.x || 0, 0, playerData.z || 0);
     snowman.setRotation(playerData.yaw || 0);
@@ -548,13 +550,18 @@ export class GameEngine {
       if (!player) {
         const playerTeam = playerData.team || 'red';
         const isTeammate = playerTeam === this.localTeam;
-        const snowman = new Snowman(this.scene, false, playerTeam, isTeammate, playerData.name || '', false);
+        const playerName = playerData.name || '';
+        const snowman = new Snowman(this.scene, false, playerTeam, isTeammate, playerName, false);
         snowman.setCamera(this.camera);
         player = {
           snowman: snowman,
           data: playerData
         };
         this.remotePlayers.set(playerData.id, player);
+      } else {
+        if (playerData.name && player.data && playerData.name !== player.data.name) {
+          player.snowman.updateNameLabel(playerData.name);
+        }
       }
       
       player.snowman.setPosition(playerData.x, 0, playerData.z);
@@ -563,6 +570,16 @@ export class GameEngine {
     }
     
     this._updatePlayerCount();
+  }
+  
+  _onPlayerNameUpdate(data) {
+    const player = this.remotePlayers.get(data.id);
+    if (player && data.name) {
+      player.snowman.updateNameLabel(data.name);
+      if (player.data) {
+        player.data.name = data.name;
+      }
+    }
   }
   
   _updatePlayerCount() {
