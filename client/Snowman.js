@@ -55,15 +55,14 @@ export class Snowman {
       type: 'cylinder',
       x: 0,
       z: 0,
-      radius: 0.75,
+      radius: 0.65,
       snowman: this
     };
   }
 
   _createBody() {
     const bottomGeometry = new THREE.SphereGeometry(0.75, 32, 32);
-    const middleGeometry = new THREE.SphereGeometry(0.58, 32, 32);
-    const topGeometry = new THREE.SphereGeometry(0.45, 32, 32);
+    const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
 
     const snowMaterial = new THREE.MeshStandardMaterial({
       color: COLORS.SNOW,
@@ -76,20 +75,14 @@ export class Snowman {
     this.bottomSphere.castShadow = true;
     this.bottomSphere.receiveShadow = true;
 
-    this.middleSphere = new THREE.Mesh(middleGeometry, snowMaterial.clone());
-    this.middleSphere.position.y = 1.7;
-    this.middleSphere.castShadow = true;
-    this.middleSphere.receiveShadow = true;
-
-    this.headSphere = new THREE.Mesh(topGeometry, snowMaterial.clone());
-    this.headSphere.position.y = 2.55;
+    this.headSphere = new THREE.Mesh(headGeometry, snowMaterial.clone());
+    this.headSphere.position.y = 1.7;
     this.headSphere.castShadow = true;
     this.headSphere.receiveShadow = true;
 
-    this.bodyMeshes = [this.bottomSphere, this.middleSphere, this.headSphere];
+    this.bodyMeshes = [this.bottomSphere, this.headSphere];
 
     this.group.add(this.bottomSphere);
-    this.group.add(this.middleSphere);
     this.group.add(this.headSphere);
 
     const buttonGeometry = new THREE.SphereGeometry(0.06, 16, 16);
@@ -100,7 +93,7 @@ export class Snowman {
 
     for (let i = 0; i < 3; i++) {
       const button = new THREE.Mesh(buttonGeometry, buttonMaterial);
-      button.position.set(0, 1.75 - i * 0.22, 0.52);
+      button.position.set(0, 1.1 - i * 0.2, 0.65);
       this.group.add(button);
       this.faceMeshes.push(button);
     }
@@ -120,10 +113,10 @@ export class Snowman {
     });
 
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    leftEye.position.set(-0.15, 2.65, 0.38);
+    leftEye.position.set(-0.15, 1.8, 0.42);
 
     const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    rightEye.position.set(0.15, 2.65, 0.38);
+    rightEye.position.set(0.15, 1.8, 0.42);
 
     const noseGeometry = new THREE.ConeGeometry(0.08, 0.4, 16);
     const noseMaterial = new THREE.MeshStandardMaterial({
@@ -132,7 +125,7 @@ export class Snowman {
     });
 
     this.nose = new THREE.Mesh(noseGeometry, noseMaterial);
-    this.nose.position.set(0, 2.5, 0.55);
+    this.nose.position.set(0, 1.65, 0.55);
     this.nose.rotation.x = Math.PI / 2;
 
     const mouthGeometry = new THREE.TorusGeometry(0.1, 0.03, 8, 16, Math.PI);
@@ -142,7 +135,7 @@ export class Snowman {
     });
 
     const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
-    mouth.position.set(0, 2.35, 0.4);
+    mouth.position.set(0, 1.5, 0.45);
     mouth.rotation.x = Math.PI;
     mouth.rotation.z = Math.PI;
 
@@ -162,12 +155,12 @@ export class Snowman {
     });
 
     const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-    leftArm.position.set(-0.55, 1.7, 0);
+    leftArm.position.set(-0.55, 1.15, 0);
     leftArm.rotation.z = Math.PI / 5;
     leftArm.castShadow = true;
 
     const rightArm = new THREE.Mesh(armGeometry, armMaterial.clone());
-    rightArm.position.set(0.55, 1.7, 0);
+    rightArm.position.set(0.55, 1.15, 0);
     rightArm.rotation.z = -Math.PI / 5;
     rightArm.castShadow = true;
 
@@ -178,10 +171,10 @@ export class Snowman {
     });
 
     const leftHand = new THREE.Mesh(handGeometry, handMaterial);
-    leftHand.position.set(-0.75, 1.45, 0);
+    leftHand.position.set(-0.75, 0.9, 0);
 
     const rightHand = new THREE.Mesh(handGeometry, handMaterial.clone());
-    rightHand.position.set(0.75, 1.45, 0);
+    rightHand.position.set(0.75, 0.9, 0);
 
     this.accessoryMeshes.push(leftArm, rightArm, leftHand, rightHand);
 
@@ -199,7 +192,7 @@ export class Snowman {
       scarfColor = this.team === 'blue' ? 0x4a90d9 : 0xd94a4a;
     }
 
-    const scarfGeometry = new THREE.TorusGeometry(0.45, 0.08, 16, 32);
+    const scarfGeometry = new THREE.TorusGeometry(0.48, 0.08, 16, 32);
     const scarfMaterial = new THREE.MeshStandardMaterial({
       color: scarfColor,
       roughness: 0.7,
@@ -207,13 +200,13 @@ export class Snowman {
     });
 
     const scarf = new THREE.Mesh(scarfGeometry, scarfMaterial);
-    scarf.position.set(0, 2.1, 0);
+    scarf.position.set(0, 1.45, 0);
     scarf.rotation.x = Math.PI / 2;
     scarf.castShadow = true;
 
     const tailGeometry = new THREE.BoxGeometry(0.15, 0.4, 0.08);
     const scarfTail = new THREE.Mesh(tailGeometry, scarfMaterial.clone());
-    scarfTail.position.set(0.15, 1.85, 0.4);
+    scarfTail.position.set(0.15, 1.25, 0.4);
     scarfTail.rotation.z = -0.3;
     scarfTail.castShadow = true;
 
@@ -224,8 +217,8 @@ export class Snowman {
   }
 
   _createHat() {
-    const hatBrimGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.05, 32);
-    const hatTopGeometry = new THREE.CylinderGeometry(0.28, 0.28, 0.45, 32);
+    const hatBrimGeometry = new THREE.CylinderGeometry(0.42, 0.42, 0.05, 32);
+    const hatTopGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.45, 32);
 
     const hatColor = 0x2c3e50;
     let ribbonColor;
@@ -248,16 +241,16 @@ export class Snowman {
     });
 
     const hatBrim = new THREE.Mesh(hatBrimGeometry, hatMaterial);
-    hatBrim.position.y = 2.9;
+    hatBrim.position.y = 2.1;
     hatBrim.castShadow = true;
 
     const hatTop = new THREE.Mesh(hatTopGeometry, hatMaterial.clone());
-    hatTop.position.y = 3.15;
+    hatTop.position.y = 2.35;
     hatTop.castShadow = true;
 
-    const ribbonGeometry = new THREE.CylinderGeometry(0.29, 0.29, 0.08, 32);
+    const ribbonGeometry = new THREE.CylinderGeometry(0.31, 0.31, 0.08, 32);
     const ribbon = new THREE.Mesh(ribbonGeometry, ribbonMaterial);
-    ribbon.position.y = 2.95;
+    ribbon.position.y = 2.15;
     ribbon.castShadow = true;
 
     this.accessoryMeshes.push(hatBrim, hatTop, ribbon);
@@ -280,7 +273,7 @@ export class Snowman {
     });
 
     this.coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
-    this.coreMesh.position.set(0, 2.55, 0);
+    this.coreMesh.position.set(0, 1.7, 0);
     this.group.add(this.coreMesh);
   }
 
@@ -317,7 +310,7 @@ export class Snowman {
     this.isHit = true;
     this.hitTimer = this.hitDuration;
 
-    const meshes = [this.bottomSphere, this.middleSphere, this.headSphere];
+    const meshes = [this.bottomSphere, this.headSphere];
     meshes.forEach(mesh => {
       if (mesh.material) {
         mesh.material.emissive = new THREE.Color(isHeadshot ? 0xff0000 : 0xff6b6b);
@@ -500,7 +493,7 @@ export class Snowman {
 
   _createIndicator(showNameLabel, playerName, isAI) {
     this.indicatorGroup = new THREE.Group();
-    this.indicatorGroup.position.y = 4.0;
+    this.indicatorGroup.position.y = 3.2;
 
     const isTeammate = this.team === this.localTeam;
     const shouldShowName = this.isLocalPlayer || isTeammate;
@@ -605,7 +598,7 @@ export class Snowman {
       this.hitTimer -= deltaTime;
       if (this.hitTimer <= 0) {
         this.isHit = false;
-        const meshes = [this.bottomSphere, this.middleSphere, this.headSphere];
+        const meshes = [this.bottomSphere, this.headSphere];
         meshes.forEach(mesh => {
           if (mesh.material) {
             mesh.material.emissiveIntensity = 0;

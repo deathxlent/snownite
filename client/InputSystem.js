@@ -35,6 +35,9 @@ export class InputSystem {
     this.quickBuildPressed = false;
     this.touchQuickBuildPressed = false;
     this.quickBuildConsumed = false;
+    this.healPressed = false;
+    this.touchHealPressed = false;
+    this.healConsumed = false;
     
     this._initKeyboard();
     this._initMouse();
@@ -55,6 +58,10 @@ export class InputSystem {
         e.preventDefault();
         this.quickBuildPressed = true;
       }
+      if (e.code === 'KeyE') {
+        e.preventDefault();
+        this.healPressed = true;
+      }
     });
     
     window.addEventListener('keyup', (e) => {
@@ -65,6 +72,10 @@ export class InputSystem {
       if (e.code === 'KeyF') {
         this.quickBuildPressed = false;
         this.quickBuildConsumed = false;
+      }
+      if (e.code === 'KeyE') {
+        this.healPressed = false;
+        this.healConsumed = false;
       }
     });
   }
@@ -378,6 +389,41 @@ export class InputSystem {
       buildBtn.addEventListener('mouseup', endBuildMouse);
       buildBtn.addEventListener('mouseleave', endBuildMouse);
     }
+
+    const healBtn = document.getElementById('heal-btn');
+    if (healBtn) {
+      healBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.touchHealPressed = true;
+        healBtn.classList.add('healing');
+      }, { passive: false });
+
+      const endHeal = (e) => {
+        e.preventDefault();
+        this.touchHealPressed = false;
+        this.healConsumed = false;
+        healBtn.classList.remove('healing');
+      };
+
+      healBtn.addEventListener('touchend', endHeal, { passive: false });
+      healBtn.addEventListener('touchcancel', endHeal, { passive: false });
+
+      healBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.touchHealPressed = true;
+        healBtn.classList.add('healing');
+      });
+
+      const endHealMouse = () => {
+        this.touchHealPressed = false;
+        this.healConsumed = false;
+        healBtn.classList.remove('healing');
+      };
+
+      healBtn.addEventListener('mouseup', endHealMouse);
+      healBtn.addEventListener('mouseleave', endHealMouse);
+    }
   }
   
   _findTouch(touchList, id) {
@@ -442,6 +488,7 @@ export class InputSystem {
     
     this.gamepad.buttonA = gamepad.buttons[0] ? gamepad.buttons[0].pressed : false;
     this.gamepad.buttonB = gamepad.buttons[1] ? gamepad.buttons[1].pressed : false;
+    this.gamepad.buttonY = gamepad.buttons[3] ? gamepad.buttons[3].pressed : false;
     this.gamepad.buttonLT = gamepad.buttons[6] ? gamepad.buttons[6].pressed : false;
     this.gamepad.buttonRT = gamepad.buttons[7] ? gamepad.buttons[7].pressed : false;
     
@@ -511,6 +558,30 @@ export class InputSystem {
 
     if (pressed && !this.quickBuildConsumed) {
       this.quickBuildConsumed = true;
+      return true;
+    }
+
+    return false;
+  }
+
+  isHealPressed() {
+    let pressed = false;
+
+    if (this.healPressed) {
+      pressed = true;
+    }
+
+    this._updateGamepadState();
+    if (this.gamepadConnected && this.gamepad.buttonY) {
+      pressed = true;
+    }
+
+    if (this.touchHealPressed) {
+      pressed = true;
+    }
+
+    if (pressed && !this.healConsumed) {
+      this.healConsumed = true;
       return true;
     }
 

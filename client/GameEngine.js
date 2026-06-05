@@ -288,7 +288,7 @@ export class GameEngine {
         const aiYaw = ai.snowman.getRotation();
         const startPos = new THREE.Vector3(
           aiPos.x + Math.sin(aiYaw) * 1.2,
-          2.0,
+          1.4,
           aiPos.z + Math.cos(aiYaw) * 1.2
         );
         
@@ -575,6 +575,11 @@ export class GameEngine {
     if (this.quickBuildCooldown > 0) {
       this.quickBuildCooldown -= deltaTime;
     }
+
+    const wantHeal = this.inputSystem.isHealPressed();
+    if (wantHeal) {
+      this._tryHeal();
+    }
     
     for (let i = this.tallWalls.length - 1; i >= 0; i--) {
       const tallWall = this.tallWalls[i];
@@ -756,54 +761,28 @@ export class GameEngine {
   
   _updateHPUI() {
     if (!this.localPlayer) return;
-    
-    let hpBar = document.getElementById('hp-bar');
-    let hpFill = document.getElementById('hp-fill');
-    let hpText = document.getElementById('hp-text');
-    
-    if (!hpBar) {
-      const uiContainer = document.getElementById('game-ui');
-      if (!uiContainer) return;
-      
-      hpBar = document.createElement('div');
-      hpBar.id = 'hp-bar';
-      hpBar.style.cssText = 'position:absolute;bottom:80px;left:50%;transform:translateX(-50%);width:200px;height:20px;background:rgba(0,0,0,0.5);border-radius:10px;border:2px solid rgba(255,255,255,0.3);overflow:hidden;z-index:10;';
-      
-      hpFill = document.createElement('div');
-      hpFill.id = 'hp-fill';
-      hpFill.style.cssText = 'width:100%;height:100%;border-radius:8px;transition:width 0.3s,background-color 0.3s;';
-      
-      hpText = document.createElement('div');
-      hpText.id = 'hp-text';
-      hpText.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:12px;font-weight:bold;text-shadow:0 0 3px rgba(0,0,0,0.8);';
-      
-      hpBar.appendChild(hpFill);
-      hpBar.appendChild(hpText);
-      uiContainer.appendChild(hpBar);
-    }
-    
+
+    const hpFill = document.getElementById('hp-fill');
+    const hpText = document.getElementById('hp-text');
+
     const hp = this.localPlayer.hp;
     const maxHp = GAME_CONFIG.PLAYER_MAX_HP;
     const ratio = hp / maxHp;
-    
-    hpFill = document.getElementById('hp-fill');
-    hpText = document.getElementById('hp-text');
-    
+
     if (hpFill) {
       hpFill.style.width = `${ratio * 100}%`;
-      if (hp >= 70) {
+      if (ratio >= 0.7) {
         hpFill.style.background = 'linear-gradient(90deg, #2ecc71, #27ae60)';
-      } else if (hp >= 30) {
+        hpFill.style.animation = 'none';
+      } else if (ratio >= 0.2) {
         hpFill.style.background = 'linear-gradient(90deg, #f1c40f, #e67e22)';
-      } else if (hp >= 10) {
+        hpFill.style.animation = 'none';
+      } else {
         hpFill.style.background = 'linear-gradient(90deg, #e74c3c, #c0392b)';
         hpFill.style.animation = 'hp-flash 0.5s infinite';
-      } else {
-        hpFill.style.background = 'linear-gradient(90deg, #8e44ad, #6c3483)';
-        hpFill.style.animation = 'hp-flash 0.3s infinite';
       }
     }
-    
+
     if (hpText) {
       hpText.textContent = `${Math.ceil(hp)} / ${maxHp}`;
     }
@@ -988,6 +967,30 @@ export class GameEngine {
     }, 1500);
   }
 
+  _tryHeal() {
+    if (this.localPlayer.isDead) return;
+
+    if (this.localPlayer.hp >= this.localPlayer.maxHp) {
+      this._showBuildMessage('血量已满！');
+      return;
+    }
+
+    if (this.snowballManager.snowballCount <= 0) {
+      this._showBuildMessage('没有雪球，无法回血！');
+      return;
+    }
+
+    this.snowballManager.snowballCount--;
+    this.localPlayer.snowballCount = this.snowballManager.snowballCount;
+    this.snowballManager._updateUI();
+    const healAmount = GAME_CONFIG.HEAL_PER_SNOWBALL;
+    this.localPlayer.hp = Math.min(this.localPlayer.maxHp, this.localPlayer.hp + healAmount);
+    this.localPlayer._updateTransparency();
+    this._updateHPUI();
+    this._updateSpeedUI();
+    this._showBuildMessage(`+${healAmount} HP`);
+  }
+
   _getRandomSpawnPosition() {
     const maxAttempts = 100;
     const worldSize = GAME_CONFIG.WORLD_SIZE * 0.8;
@@ -1011,26 +1014,33 @@ export class GameEngine {
 
   _updateSpeedUI() {
     if (!this.localPlayer || this.localPlayer.isDead) return;
-    
-    let speedUI = document.getElementById('speed-indicator');
-    if (!speedUI) {
-      const uiContainer = document.getElementById('game-ui');
-      if (!uiContainer) return;
-      
-      speedUI = document.createElement('div');
-      speedUI.id = 'speed-indicator';
-      speedUI.style.cssText = 'position:absolute;bottom:110px;left:50%;transform:translateX(-50%);color:white;font-size:14px;font-weight:bold;text-shadow:0 0 3px rgba(0,0,0,0.8);font-family:"Microsoft YaHei",sans-serif;z-index:11;';
-      uiContainer.appendChild(speedUI);
+
+    const statSpeed = document.getElementById('stat-speed');
+    const statHp = document.getElementById('stat-hp');
+    const statSnowball = document.getElementById('stat-snowball');
+
+    if (statSpeed) {
+      const speedPercent = Math.round(this.localPlayer.speedMultiplier * 100);
+      let color = '#2ecc71';
+      if (speedPercent > 120) color = '#e74c3c';
+      else if (speedPercent > 100) color = '#f39c12';
+      else if (speedPercent < 90) color = '#3498db';
+      statSpeed.style.color = color;
+      statSpeed.textContent = `速度: ${speedPercent}%`;
     }
-    
-    const speedPercent = Math.round(this.localPlayer.speedMultiplier * 100);
-    let color = '#2ecc71';
-    if (speedPercent > 120) color = '#e74c3c';
-    else if (speedPercent > 100) color = '#f39c12';
-    else if (speedPercent < 90) color = '#3498db';
-    
-    speedUI.style.color = color;
-    speedUI.textContent = `速度: ${speedPercent}%  |  HP: ${Math.ceil(this.localPlayer.hp)}  |  雪球: ${this.snowballManager.snowballCount}`;
+
+    if (statHp) {
+      const hp = Math.ceil(this.localPlayer.hp);
+      let color = '#2ecc71';
+      if (hp < 20) color = '#e74c3c';
+      else if (hp < 70) color = '#f1c40f';
+      statHp.style.color = color;
+      statHp.textContent = `HP: ${hp}`;
+    }
+
+    if (statSnowball) {
+      statSnowball.textContent = `雪球: ${this.snowballManager.snowballCount}`;
+    }
   }
   
   destroy() {

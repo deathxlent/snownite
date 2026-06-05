@@ -63,7 +63,7 @@ export class ThirdPersonCamera {
     );
     
     const lookTarget = targetPos.clone()
-      .add(new THREE.Vector3(0, 1.7, 0))
+      .add(new THREE.Vector3(0, 1.2, 0))
       .add(lookDir.clone().multiplyScalar(15));
     
     this.camera.position.lerp(desiredCameraPos, t);

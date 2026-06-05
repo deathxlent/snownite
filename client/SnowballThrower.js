@@ -96,7 +96,7 @@ export class SnowballThrower {
     const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
     return new THREE.Vector3(
       playerPos.x + forward.x * 1.2,
-      2.0,
+      1.4,
       playerPos.z + forward.z * 1.2
     );
   }

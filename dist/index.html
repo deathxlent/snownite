@@ -176,6 +176,60 @@
       border-radius: 25px;
       font-size: 1rem;
     }
+
+    #hp-bar-container {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+    }
+
+    #hp-bar {
+      width: 220px;
+      height: 22px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 11px;
+      border: 2px solid rgba(255,255,255,0.3);
+      overflow: hidden;
+    }
+
+    #hp-fill {
+      width: 100%;
+      height: 100%;
+      border-radius: 9px;
+      transition: width 0.3s, background-color 0.3s;
+    }
+
+    #hp-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 11px;
+      font-weight: bold;
+      text-shadow: 0 0 3px rgba(0,0,0,0.8);
+    }
+
+    #stats-panel {
+      position: absolute;
+      top: 55px;
+      right: 20px;
+      padding: 0.6rem 1.2rem;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      border-radius: 15px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    #stats-panel span {
+      text-shadow: 0 0 3px rgba(0,0,0,0.8);
+    }
     
     #controls-hint {
       position: absolute;
@@ -580,6 +634,37 @@
     #build-btn.building {
       background: rgba(74, 144, 217, 0.6);
     }
+
+    #heal-btn {
+      width: 80px;
+      height: 80px;
+      background: rgba(46, 204, 113, 0.25);
+      border-radius: 50%;
+      border: 3px solid rgba(46, 204, 113, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      touch-action: none;
+      pointer-events: auto;
+      font-size: 0.8rem;
+      color: white;
+      font-weight: bold;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+
+    #heal-btn:active {
+      background: rgba(46, 204, 113, 0.5);
+      transform: scale(0.95);
+    }
+
+    #heal-btn.healing {
+      background: rgba(46, 204, 113, 0.6);
+    }
+
+    @keyframes hp-flash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
     
     .right-controls {
       display: flex;
@@ -595,7 +680,7 @@
       gap: 20px;
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-B2SKi0wY.js"></script>
+  <script type="module" crossorigin src="/assets/index-Brtz7wLZ.js"></script>
 </head>
 <body>
   <div id="game-container">
@@ -621,7 +706,18 @@
     
     <div id="game-ui">
       <button id="back-btn">← 返回菜单</button>
+      <div id="hp-bar-container">
+        <div id="hp-bar">
+          <div id="hp-fill"></div>
+        </div>
+        <div id="hp-text">100 / 100</div>
+      </div>
       <div id="player-count">玩家: 1</div>
+      <div id="stats-panel">
+        <span id="stat-speed">速度: 100%</span>
+        <span id="stat-hp">HP: 100</span>
+        <span id="stat-snowball">雪球: 0</span>
+      </div>
       <div id="snowball-count">⚪ 0 / 20</div>
       <div id="consecutive-count">连续攒雪球 x0</div>
       <div id="gather-countdown">0.0s</div>
@@ -636,7 +732,7 @@
         <div id="stamina-fill"></div>
       </div>
       <div id="controls-hint">
-        WASD 移动 · 鼠标 视角 · 空格 加速 · 右键(按住)连续攒雪球 · 左键(按住)蓄力投掷 · F 快速建造
+        WASD 移动 · 鼠标 视角 · 空格 加速 · 右键(按住)连续攒雪球 · 左键(按住)蓄力投掷 · F 快速建造 · E 回血
       </div>
       <div id="pointer-lock-hint">点击屏幕锁定鼠标控制视角</div>
     </div>
@@ -658,6 +754,9 @@
         </div>
         <div id="build-btn">
           <span>建造</span>
+        </div>
+        <div id="heal-btn">
+          <span>回血</span>
         </div>
         <div id="sprint-btn">
           <span>加速</span>
