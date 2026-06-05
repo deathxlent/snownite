@@ -74,7 +74,9 @@ export class GameEngine {
     this.clock = new THREE.Clock();
     
     this.inputSystem = new InputSystem(this.canvas);
-    this.mapGenerator = new MapGenerator(this.scene);
+    const mapData = window.__pendingMapData || null;
+    window.__pendingMapData = null;
+    this.mapGenerator = new MapGenerator(this.scene, mapData);
     this.snowballManager = new SnowballManager(this.mapGenerator.gridGround, this.mapGenerator);
     this.snowballThrower = new SnowballThrower(this.scene, this.mapGenerator.gridGround, this.mapGenerator);
     

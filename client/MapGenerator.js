@@ -3,16 +3,40 @@ import { COLORS, GAME_CONFIG, MAP_OBSTACLES } from '../shared/constants.js';
 import { GridGround } from './GridGround.js';
 
 export class MapGenerator {
-  constructor(scene) {
+  constructor(scene, mapData) {
     this.scene = scene;
     this.colliders = [];
     this.walls = [];
     this.gridGround = new GridGround(scene);
-    this._generateWallPositions();
+
+    if (mapData) {
+      this._loadFromMapData(mapData);
+    } else {
+      this._generateWallPositions();
+    }
+
     this._createSnowHouses();
     this._createWalls();
     this._createLighting();
     this._createFog();
+  }
+
+  _loadFromMapData(mapData) {
+    MAP_OBSTACLES.houses = (mapData.houses || []).map(h => ({
+      x: h.x,
+      z: h.z,
+      radius: h.radius || 2.5
+    }));
+
+    MAP_OBSTACLES.walls = (mapData.walls || []).map(w => ({
+      x: w.x,
+      z: w.z,
+      angle: w.angle || 0,
+      width: w.width || GAME_CONFIG.WALL_WIDTH,
+      thickness: w.thickness || GAME_CONFIG.WALL_THICKNESS,
+      height: GAME_CONFIG.WALL_HEIGHT,
+      snowUnits: GAME_CONFIG.WALL_MAX_SNOW_UNIT
+    }));
   }
 
   _seededRandom(seed) {
