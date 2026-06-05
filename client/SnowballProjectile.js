@@ -236,6 +236,26 @@ export class SnowballProjectile {
   _checkCollision(collider) {
     const pos = this.mesh.position;
 
+    if (collider.type === 'wall' && collider.tallWall) {
+      const tallWall = collider.tallWall;
+      if (tallWall.destroyed) return null;
+
+      const cos = Math.cos(-collider.angle);
+      const sin = Math.sin(-collider.angle);
+      const dx = pos.x - collider.x;
+      const dz = pos.z - collider.z;
+      const localX = dx * cos - dz * sin;
+      const localZ = dx * sin + dz * cos;
+
+      if (Math.abs(localX) <= collider.width / 2 + this.radius &&
+          Math.abs(localZ) <= collider.thickness / 2 + this.radius) {
+        if (pos.y > 0 && pos.y < tallWall.height + 0.3) {
+          tallWall.takeDamage(this.isCharged ? GAME_CONFIG.CHARGED_SNOWBALL_DAMAGE : GAME_CONFIG.SNOWBALL_DAMAGE);
+          return { hitWall: true };
+        }
+      }
+    }
+
     if (collider.type === 'cylinder') {
       const dx = pos.x - collider.x;
       const dz = pos.z - collider.z;

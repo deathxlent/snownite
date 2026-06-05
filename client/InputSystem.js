@@ -32,6 +32,9 @@ export class InputSystem {
     this.throwPressed = false;
     this.throwPressStartTime = 0;
     this.touchThrowPressed = false;
+    this.quickBuildPressed = false;
+    this.touchQuickBuildPressed = false;
+    this.quickBuildConsumed = false;
     
     this._initKeyboard();
     this._initMouse();
@@ -48,12 +51,20 @@ export class InputSystem {
         e.preventDefault();
         this.sprintPressed = true;
       }
+      if (e.code === 'KeyF') {
+        e.preventDefault();
+        this.quickBuildPressed = true;
+      }
     });
     
     window.addEventListener('keyup', (e) => {
       this.keys[e.code] = false;
       if (e.code === 'Space') {
         this.sprintPressed = false;
+      }
+      if (e.code === 'KeyF') {
+        this.quickBuildPressed = false;
+        this.quickBuildConsumed = false;
       }
     });
   }
@@ -332,6 +343,41 @@ export class InputSystem {
       throwBtn.addEventListener('mouseup', endThrowMouse);
       throwBtn.addEventListener('mouseleave', endThrowMouse);
     }
+
+    const buildBtn = document.getElementById('build-btn');
+    if (buildBtn) {
+      buildBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.touchQuickBuildPressed = true;
+        buildBtn.classList.add('building');
+      }, { passive: false });
+
+      const endBuild = (e) => {
+        e.preventDefault();
+        this.touchQuickBuildPressed = false;
+        this.quickBuildConsumed = false;
+        buildBtn.classList.remove('building');
+      };
+
+      buildBtn.addEventListener('touchend', endBuild, { passive: false });
+      buildBtn.addEventListener('touchcancel', endBuild, { passive: false });
+
+      buildBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.touchQuickBuildPressed = true;
+        buildBtn.classList.add('building');
+      });
+
+      const endBuildMouse = () => {
+        this.touchQuickBuildPressed = false;
+        this.quickBuildConsumed = false;
+        buildBtn.classList.remove('building');
+      };
+
+      buildBtn.addEventListener('mouseup', endBuildMouse);
+      buildBtn.addEventListener('mouseleave', endBuildMouse);
+    }
   }
   
   _findTouch(touchList, id) {
@@ -395,6 +441,7 @@ export class InputSystem {
     this.gamepad.lookJoystick.active = rightX !== 0 || rightY !== 0;
     
     this.gamepad.buttonA = gamepad.buttons[0] ? gamepad.buttons[0].pressed : false;
+    this.gamepad.buttonB = gamepad.buttons[1] ? gamepad.buttons[1].pressed : false;
     this.gamepad.buttonLT = gamepad.buttons[6] ? gamepad.buttons[6].pressed : false;
     this.gamepad.buttonRT = gamepad.buttons[7] ? gamepad.buttons[7].pressed : false;
     
@@ -444,6 +491,30 @@ export class InputSystem {
     }
     
     return this.throwPressed;
+  }
+  
+  isQuickBuildPressed() {
+    let pressed = false;
+
+    if (this.quickBuildPressed) {
+      pressed = true;
+    }
+
+    this._updateGamepadState();
+    if (this.gamepadConnected && this.gamepad.buttonB) {
+      pressed = true;
+    }
+
+    if (this.touchQuickBuildPressed) {
+      pressed = true;
+    }
+
+    if (pressed && !this.quickBuildConsumed) {
+      this.quickBuildConsumed = true;
+      return true;
+    }
+
+    return false;
   }
   
   getThrowChargeTime() {

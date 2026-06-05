@@ -7,6 +7,7 @@ import { ThirdPersonCamera } from './ThirdPersonCamera.js';
 import { SnowballManager } from './SnowballManager.js';
 import { SnowballThrower } from './SnowballThrower.js';
 import { SnowballProjectile } from './SnowballProjectile.js';
+import { TallWall } from './TallWall.js';
 
 export class GameEngine {
   constructor(canvas, isNetworked = false, networkClient = null, playerName = '') {
@@ -35,6 +36,9 @@ export class GameEngine {
     
     this.snowballManager = null;
     this.snowballThrower = null;
+
+    this.tallWalls = [];
+    this.quickBuildCooldown = 0;
     
     this.isRunning = false;
     this.animationFrameId = null;
@@ -564,6 +568,22 @@ export class GameEngine {
     
     this._updateHPUI();
     
+    const wantQuickBuild = this.inputSystem.isQuickBuildPressed();
+    if (wantQuickBuild && this.quickBuildCooldown <= 0) {
+      this._tryQuickBuild();
+    }
+    if (this.quickBuildCooldown > 0) {
+      this.quickBuildCooldown -= deltaTime;
+    }
+    
+    for (let i = this.tallWalls.length - 1; i >= 0; i--) {
+      const tallWall = this.tallWalls[i];
+      tallWall.update(deltaTime);
+      if (tallWall.destroyed) {
+        this.tallWalls.splice(i, 1);
+      }
+    }
+    
     const forward = new THREE.Vector2(
       Math.sin(cameraYaw),
       Math.cos(cameraYaw)
@@ -843,6 +863,131 @@ export class GameEngine {
     this._updateSpeedUI();
   }
 
+  _tryQuickBuild() {
+    const playerPos = this.localPlayer.getPosition();
+    const cameraYaw = this.thirdPersonCamera.getYaw();
+
+    const forward = { x: Math.sin(cameraYaw), z: Math.cos(cameraYaw) };
+    const buildDist = GAME_CONFIG.TALL_WALL_BUILD_DISTANCE;
+    const wallX = playerPos.x + forward.x * buildDist;
+    const wallZ = playerPos.z + forward.z * buildDist;
+
+    if (this.mapGenerator.checkCollision(wallX, wallZ, GAME_CONFIG.TALL_WALL_WIDTH / 2)) {
+      this._showBuildMessage('前方有障碍物，无法建造！');
+      this.quickBuildCooldown = 0.5;
+      return;
+    }
+
+    for (const wall of this.mapGenerator.walls) {
+      const dx = wallX - wall.x;
+      const dz = wallZ - wall.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < wall.width / 2 + GAME_CONFIG.TALL_WALL_WIDTH / 2 + 0.5) {
+        const toWallX = wall.x - playerPos.x;
+        const toWallZ = wall.z - playerPos.z;
+        const dot = forward.x * toWallX + forward.z * toWallZ;
+        if (dot > 0) {
+          this._showBuildMessage('前方有矮墙，无法建造！');
+          this.quickBuildCooldown = 0.5;
+          return;
+        }
+      }
+    }
+
+    for (const tw of this.tallWalls) {
+      if (tw.destroyed) continue;
+      const dx = wallX - tw.x;
+      const dz = wallZ - tw.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < GAME_CONFIG.TALL_WALL_WIDTH + 0.5) {
+        this._showBuildMessage('前方已有高墙，无法建造！');
+        this.quickBuildCooldown = 0.5;
+        return;
+      }
+    }
+
+    const gridGround = this.mapGenerator.gridGround;
+    const buildCost = GAME_CONFIG.TALL_WALL_BUILD_COST;
+
+    const surroundingCells = gridGround.getSurroundingCells(playerPos.x, playerPos.z, cameraYaw);
+    let totalAvailable = 0;
+    for (const cell of surroundingCells) {
+      if (gridGround._isValidGrid(cell.gridX, cell.gridZ)) {
+        totalAvailable += gridGround.snowUnits[cell.gridX][cell.gridZ];
+      }
+    }
+
+    if (totalAvailable < buildCost) {
+      this._showBuildMessage('附近雪量不足，无法建造！');
+      this.quickBuildCooldown = 0.5;
+      return;
+    }
+
+    let remaining = buildCost;
+    const sortedCells = [...surroundingCells].sort((a, b) => a.priority - b.priority);
+    for (const cell of sortedCells) {
+      if (remaining <= 0) break;
+      if (!gridGround._isValidGrid(cell.gridX, cell.gridZ)) continue;
+      const available = gridGround.snowUnits[cell.gridX][cell.gridZ];
+      const consumed = Math.min(available, remaining);
+      gridGround.snowUnits[cell.gridX][cell.gridZ] -= consumed;
+      gridGround._updateCellVisual(cell.gridX, cell.gridZ);
+      remaining -= consumed;
+    }
+
+    const tallWall = new TallWall(
+      this.scene,
+      wallX,
+      wallZ,
+      cameraYaw,
+      (destroyedWall) => {
+        this._onTallWallDestroyed(destroyedWall);
+      }
+    );
+
+    this.tallWalls.push(tallWall);
+    this.snowballThrower.addCollider(tallWall.collider);
+    this.mapGenerator.colliders.push(tallWall.collider);
+
+    this.quickBuildCooldown = 0.8;
+    this._showBuildMessage('高墙已建造！');
+  }
+
+  _onTallWallDestroyed(tallWall) {
+    const colliderIndex = this.snowballThrower.colliders.indexOf(tallWall.collider);
+    if (colliderIndex !== -1) {
+      this.snowballThrower.colliders.splice(colliderIndex, 1);
+    }
+
+    const mapColliderIndex = this.mapGenerator.colliders.indexOf(tallWall.collider);
+    if (mapColliderIndex !== -1) {
+      this.mapGenerator.colliders.splice(mapColliderIndex, 1);
+    }
+  }
+
+  _showBuildMessage(text) {
+    let buildMsg = document.getElementById('build-message');
+    if (!buildMsg) {
+      const uiContainer = document.getElementById('game-ui');
+      if (!uiContainer) return;
+      buildMsg = document.createElement('div');
+      buildMsg.id = 'build-message';
+      buildMsg.style.cssText = 'position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);padding:0.6rem 1.5rem;background:rgba(0,0,0,0.7);color:white;border-radius:15px;font-size:1.1rem;font-weight:bold;z-index:55;pointer-events:none;transition:opacity 0.3s;';
+      uiContainer.appendChild(buildMsg);
+    }
+    buildMsg.textContent = text;
+    buildMsg.style.opacity = '1';
+    buildMsg.style.display = 'block';
+
+    clearTimeout(this._buildMessageTimer);
+    this._buildMessageTimer = setTimeout(() => {
+      buildMsg.style.opacity = '0';
+      setTimeout(() => {
+        buildMsg.style.display = 'none';
+      }, 300);
+    }, 1500);
+  }
+
   _getRandomSpawnPosition() {
     const maxAttempts = 100;
     const worldSize = GAME_CONFIG.WORLD_SIZE * 0.8;
@@ -900,6 +1045,13 @@ export class GameEngine {
       ai.snowman.remove();
     }
     this.aiPlayers = [];
+    
+    for (const tallWall of this.tallWalls) {
+      if (!tallWall.destroyed) {
+        tallWall.remove();
+      }
+    }
+    this.tallWalls = [];
     
     if (this.localPlayer) {
       this.localPlayer.remove();
