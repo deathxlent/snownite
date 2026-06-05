@@ -580,6 +580,16 @@ export class GameEngine {
     if (wantHeal) {
       this._tryHeal();
     }
+
+    const wantSuSnowball = this.inputSystem.isSuSnowballPressed();
+    if (wantSuSnowball) {
+      this._trySuSnowball();
+    }
+
+    const wantSuWall = this.inputSystem.isSuWallPressed();
+    if (wantSuWall) {
+      this._trySuWall();
+    }
     
     for (let i = this.tallWalls.length - 1; i >= 0; i--) {
       const tallWall = this.tallWalls[i];
@@ -866,7 +876,7 @@ export class GameEngine {
         const toWallZ = wall.z - playerPos.z;
         const dot = forward.x * toWallX + forward.z * toWallZ;
         if (dot > 0) {
-          this._showBuildMessage('前方有矮墙，无法建造！');
+          this._showBuildMessage('前方有高墙，无法建造！');
           this.quickBuildCooldown = 0.5;
           return;
         }
@@ -879,7 +889,7 @@ export class GameEngine {
       const dz = wallZ - tw.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
       if (dist < GAME_CONFIG.TALL_WALL_WIDTH + 0.5) {
-        this._showBuildMessage('前方已有高墙，无法建造！');
+        this._showBuildMessage('前方已有矮墙，无法建造！');
         this.quickBuildCooldown = 0.5;
         return;
       }
@@ -929,7 +939,7 @@ export class GameEngine {
     this.mapGenerator.colliders.push(tallWall.collider);
 
     this.quickBuildCooldown = 0.8;
-    this._showBuildMessage('高墙已建造！');
+    this._showBuildMessage('矮墙已建造！');
   }
 
   _onTallWallDestroyed(tallWall) {
@@ -986,9 +996,105 @@ export class GameEngine {
     const healAmount = GAME_CONFIG.HEAL_PER_SNOWBALL;
     this.localPlayer.hp = Math.min(this.localPlayer.maxHp, this.localPlayer.hp + healAmount);
     this.localPlayer._updateTransparency();
+    this.localPlayer.updateSpeedMultiplier();
     this._updateHPUI();
     this._updateSpeedUI();
     this._showBuildMessage(`+${healAmount} HP`);
+  }
+
+  _trySuSnowball() {
+    if (this.localPlayer.isDead) return;
+
+    const cost = GAME_CONFIG.SU_COST_SNOWBALL;
+    if (this.localPlayer.hp <= cost) {
+      this._showBuildMessage(`血量不足！需要 ${cost} SU`);
+      return;
+    }
+
+    if (this.snowballManager.snowballCount >= this.snowballManager.maxSnowballs) {
+      this._showBuildMessage('雪球已满！');
+      return;
+    }
+
+    this.localPlayer.hp -= cost;
+    this.snowballManager.snowballCount++;
+    this.localPlayer.snowballCount = this.snowballManager.snowballCount;
+    this.snowballManager._updateUI();
+    this.localPlayer._updateTransparency();
+    this.localPlayer.updateSpeedMultiplier();
+    this._updateHPUI();
+    this._updateSpeedUI();
+    this._showBuildMessage(`-${cost} SU → +1 雪球`);
+  }
+
+  _trySuWall() {
+    if (this.localPlayer.isDead) return;
+
+    const cost = GAME_CONFIG.SU_COST_SHORT_WALL;
+    if (this.localPlayer.hp <= cost) {
+      this._showBuildMessage(`血量不足！需要 ${cost} SU`);
+      return;
+    }
+
+    const playerPos = this.localPlayer.getPosition();
+    const cameraYaw = this.thirdPersonCamera.getYaw();
+    const forward = { x: Math.sin(cameraYaw), z: Math.cos(cameraYaw) };
+    const buildDist = GAME_CONFIG.TALL_WALL_BUILD_DISTANCE;
+    const wallX = playerPos.x + forward.x * buildDist;
+    const wallZ = playerPos.z + forward.z * buildDist;
+
+    if (this.mapGenerator.checkCollision(wallX, wallZ, GAME_CONFIG.TALL_WALL_WIDTH / 2)) {
+      this._showBuildMessage('前方有障碍物，无法建造！');
+      return;
+    }
+
+    for (const wall of this.mapGenerator.walls) {
+      const dx = wallX - wall.x;
+      const dz = wallZ - wall.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < wall.width / 2 + GAME_CONFIG.TALL_WALL_WIDTH / 2 + 0.5) {
+        const toWallX = wall.x - playerPos.x;
+        const toWallZ = wall.z - playerPos.z;
+        const dot = forward.x * toWallX + forward.z * toWallZ;
+        if (dot > 0) {
+          this._showBuildMessage('前方有高墙，无法建造！');
+          return;
+        }
+      }
+    }
+
+    for (const tw of this.tallWalls) {
+      if (tw.destroyed) continue;
+      const dx = wallX - tw.x;
+      const dz = wallZ - tw.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < GAME_CONFIG.TALL_WALL_WIDTH + 0.5) {
+        this._showBuildMessage('前方已有矮墙，无法建造！');
+        return;
+      }
+    }
+
+    this.localPlayer.hp -= cost;
+    this.localPlayer._updateTransparency();
+
+    const tallWall = new TallWall(
+      this.scene,
+      wallX,
+      wallZ,
+      cameraYaw,
+      (destroyedWall) => {
+        this._onTallWallDestroyed(destroyedWall);
+      }
+    );
+
+    this.tallWalls.push(tallWall);
+    this.snowballThrower.addCollider(tallWall.collider);
+    this.mapGenerator.colliders.push(tallWall.collider);
+
+    this.localPlayer.updateSpeedMultiplier();
+    this._updateHPUI();
+    this._updateSpeedUI();
+    this._showBuildMessage(`-${cost} SU → 矮墙已建造！`);
   }
 
   _getRandomSpawnPosition() {

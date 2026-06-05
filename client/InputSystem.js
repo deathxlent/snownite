@@ -38,6 +38,12 @@ export class InputSystem {
     this.healPressed = false;
     this.touchHealPressed = false;
     this.healConsumed = false;
+    this.suSnowballPressed = false;
+    this.touchSuSnowballPressed = false;
+    this.suSnowballConsumed = false;
+    this.suWallPressed = false;
+    this.touchSuWallPressed = false;
+    this.suWallConsumed = false;
     
     this._initKeyboard();
     this._initMouse();
@@ -62,6 +68,14 @@ export class InputSystem {
         e.preventDefault();
         this.healPressed = true;
       }
+      if (e.code === 'KeyQ') {
+        e.preventDefault();
+        this.suSnowballPressed = true;
+      }
+      if (e.code === 'KeyR') {
+        e.preventDefault();
+        this.suWallPressed = true;
+      }
     });
     
     window.addEventListener('keyup', (e) => {
@@ -76,6 +90,14 @@ export class InputSystem {
       if (e.code === 'KeyE') {
         this.healPressed = false;
         this.healConsumed = false;
+      }
+      if (e.code === 'KeyQ') {
+        this.suSnowballPressed = false;
+        this.suSnowballConsumed = false;
+      }
+      if (e.code === 'KeyR') {
+        this.suWallPressed = false;
+        this.suWallConsumed = false;
       }
     });
   }
@@ -424,6 +446,76 @@ export class InputSystem {
       healBtn.addEventListener('mouseup', endHealMouse);
       healBtn.addEventListener('mouseleave', endHealMouse);
     }
+
+    const suSnowballBtn = document.getElementById('su-snowball-btn');
+    if (suSnowballBtn) {
+      suSnowballBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.touchSuSnowballPressed = true;
+        suSnowballBtn.classList.add('active');
+      }, { passive: false });
+
+      const endSuSnowball = (e) => {
+        e.preventDefault();
+        this.touchSuSnowballPressed = false;
+        this.suSnowballConsumed = false;
+        suSnowballBtn.classList.remove('active');
+      };
+
+      suSnowballBtn.addEventListener('touchend', endSuSnowball, { passive: false });
+      suSnowballBtn.addEventListener('touchcancel', endSuSnowball, { passive: false });
+
+      suSnowballBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.touchSuSnowballPressed = true;
+        suSnowballBtn.classList.add('active');
+      });
+
+      const endSuSnowballMouse = () => {
+        this.touchSuSnowballPressed = false;
+        this.suSnowballConsumed = false;
+        suSnowballBtn.classList.remove('active');
+      };
+
+      suSnowballBtn.addEventListener('mouseup', endSuSnowballMouse);
+      suSnowballBtn.addEventListener('mouseleave', endSuSnowballMouse);
+    }
+
+    const suWallBtn = document.getElementById('su-wall-btn');
+    if (suWallBtn) {
+      suWallBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.touchSuWallPressed = true;
+        suWallBtn.classList.add('active');
+      }, { passive: false });
+
+      const endSuWall = (e) => {
+        e.preventDefault();
+        this.touchSuWallPressed = false;
+        this.suWallConsumed = false;
+        suWallBtn.classList.remove('active');
+      };
+
+      suWallBtn.addEventListener('touchend', endSuWall, { passive: false });
+      suWallBtn.addEventListener('touchcancel', endSuWall, { passive: false });
+
+      suWallBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.touchSuWallPressed = true;
+        suWallBtn.classList.add('active');
+      });
+
+      const endSuWallMouse = () => {
+        this.touchSuWallPressed = false;
+        this.suWallConsumed = false;
+        suWallBtn.classList.remove('active');
+      };
+
+      suWallBtn.addEventListener('mouseup', endSuWallMouse);
+      suWallBtn.addEventListener('mouseleave', endSuWallMouse);
+    }
   }
   
   _findTouch(touchList, id) {
@@ -488,7 +580,9 @@ export class InputSystem {
     
     this.gamepad.buttonA = gamepad.buttons[0] ? gamepad.buttons[0].pressed : false;
     this.gamepad.buttonB = gamepad.buttons[1] ? gamepad.buttons[1].pressed : false;
+    this.gamepad.buttonX = gamepad.buttons[2] ? gamepad.buttons[2].pressed : false;
     this.gamepad.buttonY = gamepad.buttons[3] ? gamepad.buttons[3].pressed : false;
+    this.gamepad.buttonLB = gamepad.buttons[4] ? gamepad.buttons[4].pressed : false;
     this.gamepad.buttonLT = gamepad.buttons[6] ? gamepad.buttons[6].pressed : false;
     this.gamepad.buttonRT = gamepad.buttons[7] ? gamepad.buttons[7].pressed : false;
     
@@ -582,6 +676,54 @@ export class InputSystem {
 
     if (pressed && !this.healConsumed) {
       this.healConsumed = true;
+      return true;
+    }
+
+    return false;
+  }
+
+  isSuSnowballPressed() {
+    let pressed = false;
+
+    if (this.suSnowballPressed) {
+      pressed = true;
+    }
+
+    this._updateGamepadState();
+    if (this.gamepadConnected && this.gamepad.buttonX) {
+      pressed = true;
+    }
+
+    if (this.touchSuSnowballPressed) {
+      pressed = true;
+    }
+
+    if (pressed && !this.suSnowballConsumed) {
+      this.suSnowballConsumed = true;
+      return true;
+    }
+
+    return false;
+  }
+
+  isSuWallPressed() {
+    let pressed = false;
+
+    if (this.suWallPressed) {
+      pressed = true;
+    }
+
+    this._updateGamepadState();
+    if (this.gamepadConnected && this.gamepad.buttonLB) {
+      pressed = true;
+    }
+
+    if (this.touchSuWallPressed) {
+      pressed = true;
+    }
+
+    if (pressed && !this.suWallConsumed) {
+      this.suWallConsumed = true;
       return true;
     }
 

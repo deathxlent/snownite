@@ -369,9 +369,9 @@ export class Snowman {
 
   updateSpeedMultiplier() {
     const baseSpeed = 1.05;
+    const missingHpBonus = (this.maxHp - this.hp) * 0.01;
     const snowballPenalty = this.snowballCount * 0.01;
-    const hpBonus = this.hp * 0.01;
-    this.speedMultiplier = baseSpeed - snowballPenalty + hpBonus;
+    this.speedMultiplier = baseSpeed + missingHpBonus - snowballPenalty;
   }
 
   respawn(x, z) {
